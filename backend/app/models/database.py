@@ -18,14 +18,19 @@ from typing import Generator
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Get the absolute path to the backend directory
-backend_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
-db_path = os.path.join(backend_dir, "election_monitoring.db")
-logger.info(f"Using database path: {db_path}")
+# Get the database URL from environment variable or use default
+if os.environ.get("DATABASE_URL"):
+    DATABASE_URL = os.environ.get("DATABASE_URL")
+    logger.info(f"Using database URL from environment: {DATABASE_URL}")
+else:
+    # Get the absolute path to the backend directory
+    backend_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
+    db_path = os.path.join(backend_dir, "election_monitoring.db")
+    logger.info(f"Using database path: {db_path}")
 
-# Database URL with absolute path
-DATABASE_URL = f"sqlite:///{db_path}"
-logger.info(f"Database URL: {DATABASE_URL}")
+    # Database URL with absolute path
+    DATABASE_URL = f"sqlite:///{db_path}"
+    logger.info(f"Database URL: {DATABASE_URL}")
 
 # Create engine with SQLite-specific arguments
 # In production, this would be replaced with PostgreSQL connection
@@ -82,22 +87,28 @@ def create_tables() -> None:
     This function should be called when the application starts.
     """
     try:
-        # Ensure the directory exists
-        db_dir = os.path.dirname(db_path)
-        if not os.path.exists(db_dir):
-            logger.info(f"Creating database directory: {db_dir}")
-            os.makedirs(db_dir, exist_ok=True)
+        # Get the database path from the URL
+        if DATABASE_URL.startswith("sqlite:///"):
+            db_path = DATABASE_URL[10:]
+            
+            # Ensure the directory exists
+            db_dir = os.path.dirname(db_path)
+            if not os.path.exists(db_dir):
+                logger.info(f"Creating database directory: {db_dir}")
+                os.makedirs(db_dir, exist_ok=True)
         
         # Create tables
         logger.info("Creating database tables...")
         Base.metadata.create_all(bind=engine)
         logger.info("Database tables created successfully")
         
-        # Verify database file exists
-        if os.path.exists(db_path):
-            logger.info(f"Database file created at: {db_path}")
-        else:
-            logger.warning(f"Database file not found at: {db_path}")
+        # Verify database file exists if using SQLite
+        if DATABASE_URL.startswith("sqlite:///"):
+            db_path = DATABASE_URL[10:]
+            if os.path.exists(db_path):
+                logger.info(f"Database file created at: {db_path}")
+            else:
+                logger.warning(f"Database file not found at: {db_path}")
     except Exception as e:
         logger.error(f"Error creating tables: {str(e)}")
         import traceback

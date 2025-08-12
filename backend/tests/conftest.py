@@ -30,12 +30,21 @@ def engine():
     Returns:
         SQLAlchemy engine
     """
-    # Use in-memory SQLite database for testing
-    engine = create_engine(
-        "sqlite:///:memory:",
-        connect_args={"check_same_thread": False},
-        poolclass=StaticPool,
-    )
+    # Check if we're running end-to-end tests
+    if os.environ.get("TESTING") == "1":
+        # Use the file-based SQLite database created by run_e2e_tests.py
+        test_db_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "test.db")
+        engine = create_engine(
+            f"sqlite:///{test_db_path}",
+            connect_args={"check_same_thread": False},
+        )
+    else:
+        # Use in-memory SQLite database for unit tests
+        engine = create_engine(
+            "sqlite:///:memory:",
+            connect_args={"check_same_thread": False},
+            poolclass=StaticPool,
+        )
     
     # Enable foreign key constraints in SQLite
     with engine.connect() as conn:

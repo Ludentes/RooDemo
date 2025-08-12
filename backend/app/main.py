@@ -40,6 +40,7 @@ def custom_openapi():
         * **Constituencies**: Access constituency data with filtering and pagination
         * **Elections**: Retrieve election information and upcoming elections
         * **Dashboard**: Get summary statistics for monitoring
+        * **Files**: Process transaction files and update metrics
         
         ## Authentication
         
@@ -72,6 +73,10 @@ def custom_openapi():
         {
             "name": "dashboard",
             "description": "Dashboard summary statistics",
+        },
+        {
+            "name": "files",
+            "description": "File processing operations for transaction data",
         },
     ]
     

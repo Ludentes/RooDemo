@@ -20,7 +20,7 @@ class BaseSchema(BaseModel):
     class Config:
         """Configuration for all schemas."""
         
-        orm_mode = True
+        from_attributes = True  # Renamed from orm_mode in Pydantic v2
         arbitrary_types_allowed = True
         json_encoders = {
             datetime: lambda dt: dt.isoformat(),
@@ -131,4 +131,4 @@ class ListBase(Generic[T]):
     class Config:
         """Configuration for list response schemas."""
         
-        orm_mode = True
+        from_attributes = True  # Renamed from orm_mode in Pydantic v2
