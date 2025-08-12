@@ -27,7 +27,7 @@
 #### **React 18.2.0**
 - **Why**: Industry standard, mature ecosystem, excellent TypeScript support
 - **Alternatives Considered**: Vue.js (learning curve), Angular (overkill for MVP)
-- **Key Features**: 
+- **Key Features**:
   - Concurrent features for smooth UIs
   - Strict mode for development
   - Built-in performance optimization
@@ -35,7 +35,7 @@
 #### **TypeScript 5.2.2**
 - **Why**: Type safety, better IDE support, reduced runtime errors
 - **Configuration**: Strict mode enabled
-- **Benefits**: 
+- **Benefits**:
   - Catch errors at compile time
   - Better refactoring support
   - Enhanced developer experience
@@ -50,7 +50,7 @@
 
 #### **Zustand 4.4.7**
 - **Why**: Minimal boilerplate, TypeScript-first, perfect for MVP scope
-- **Alternatives Considered**: 
+- **Alternatives Considered**:
   - Redux Toolkit (too much boilerplate for MVP)
   - Context API (performance issues at scale)
   - Jotai (more complex than needed)
@@ -59,21 +59,35 @@
   - Excellent TypeScript inference
   - Small bundle size (2.7kb)
 
-#### **Tailwind CSS 3.3.5**
+#### **Tailwind CSS 4.0.0**
 - **Why**: Rapid development, consistent design system, excellent performance
 - **Configuration**: Custom color palette, responsive breakpoints
-- **Benefits**:
+- **Key Features**:
   - Utility-first approach
   - Built-in design system
   - Automatic CSS purging
+  - New `size-*` utility for width/height
+  - CSS variables with `@theme` directive
+  - Improved color system with OKLCH
 
-#### **Recharts 2.8.0**
-- **Why**: React-native, composable charts, good TypeScript support
-- **Alternatives Considered**: 
-  - Chart.js (imperative API)
-  - D3 (too complex for simple charts)
-  - Visx (overkill)
-- **Use Cases**: Activity timelines, participation charts, trend analysis
+#### **shadcn/ui**
+- **Why**: Beautifully designed, accessible components with full customization
+- **Configuration**: New York style, CSS variables for theming
+- **Benefits**:
+  - Copy-paste components (not a dependency)
+  - Radix UI primitives for accessibility
+  - Tailwind CSS integration
+  - Fully customizable source code
+  - Consistent design language
+
+#### **shadcn/ui Charts**
+- **Why**: Beautiful, customizable chart components built on Recharts
+- **Key Features**:
+  - Composition-based approach
+  - Themed with CSS variables
+  - Accessibility layer support
+  - Tooltips and legends
+  - Consistent styling with UI components
 
 #### **React Router DOM 6.20.0**
 - **Why**: Standard routing solution, excellent developer experience
@@ -175,6 +189,13 @@
 - **Configuration**: Standard React rules, automatic formatting
 - **Integration**: VS Code, pre-commit hooks
 - **Benefits**: Consistent code style, error prevention
+
+#### **tw-animate-css**
+- **Why**: Animation utilities for Tailwind CSS 4
+- **Benefits**:
+  - Consistent animation system
+  - Keyframe animations
+  - Transition utilities
 
 #### **pytest 7.4.3**
 - **Why**: Most popular Python testing framework
