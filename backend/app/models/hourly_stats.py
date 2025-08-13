@@ -19,29 +19,39 @@ class HourlyStats(Base, UUIDMixin, TimestampMixin):
     Attributes:
         id (str): Primary key, UUID
         constituency_id (str): Foreign key to Constituency
+        election_id (str): Foreign key to Election
         hour (datetime): Hour timestamp (rounded to hour)
+        timestamp (datetime): Exact timestamp for the stats
         bulletins_issued (int): Number of bulletins issued in this hour
         votes_cast (int): Number of votes cast in this hour
         transaction_count (int): Total transactions in this hour
         bulletin_velocity (float): Rate of bulletin issuance per hour
         vote_velocity (float): Rate of vote casting per hour
+        participation_rate (float): Percentage of registered voters who cast votes
+        anomaly_count (int): Count of anomalies detected in this hour
         created_at (datetime): Record creation timestamp
         constituency (Constituency): The constituency these stats belong to
+        election (Election): The election these stats belong to
     """
     
     __tablename__ = "hourly_stats"
     
     constituency_id = Column(String, ForeignKey("constituencies.id"), nullable=False, index=True)
+    election_id = Column(String, ForeignKey("elections.id"), nullable=False, index=True)
     hour = Column(DateTime, nullable=False, index=True)  # Rounded to hour
+    timestamp = Column(DateTime, nullable=False, index=True)  # Exact timestamp
     
     bulletins_issued = Column(Integer, default=0)
     votes_cast = Column(Integer, default=0)
     transaction_count = Column(Integer, default=0)
     bulletin_velocity = Column(Float, default=0.0)  # per hour
     vote_velocity = Column(Float, default=0.0)  # per hour
+    participation_rate = Column(Float, default=0.0)  # percentage
+    anomaly_count = Column(Integer, default=0)
     
     # Relationships
     constituency = relationship("Constituency", back_populates="hourly_stats")
+    election = relationship("Election", back_populates="hourly_stats")
     
     def __repr__(self):
         """String representation of the HourlyStats model."""

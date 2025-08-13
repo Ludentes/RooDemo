@@ -65,6 +65,7 @@ def custom_openapi():
         * **Dashboard**: Get summary statistics for monitoring
         * **Files**: Process transaction files and update metrics
         * **Transactions**: Manage blockchain transactions with filtering, batch processing, and statistics
+        * **Metrics**: Access detailed metrics for constituencies, elections, and dashboard
         
         ## Authentication
         
@@ -105,6 +106,10 @@ def custom_openapi():
         {
             "name": "transactions",
             "description": "Operations related to blockchain transactions",
+        },
+        {
+            "name": "metrics",
+            "description": "Metrics calculation and retrieval operations",
         },
     ]
     

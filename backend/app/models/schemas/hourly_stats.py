@@ -17,21 +17,29 @@ class HourlyStatsBase(BaseSchema):
     
     Attributes:
         constituency_id (str): ID of the constituency these stats belong to
+        election_id (str): ID of the election these stats belong to
         hour (datetime): Hour timestamp (rounded to hour)
+        timestamp (datetime): Exact timestamp for the stats
         bulletins_issued (int): Number of bulletins issued in this hour
         votes_cast (int): Number of votes cast in this hour
         transaction_count (int): Total transactions in this hour
         bulletin_velocity (float): Rate of bulletin issuance per hour
         vote_velocity (float): Rate of vote casting per hour
+        participation_rate (float): Percentage of registered voters who cast votes
+        anomaly_count (int): Count of anomalies detected in this hour
     """
     
     constituency_id: str = Field(..., description="ID of the constituency these stats belong to")
+    election_id: str = Field(..., description="ID of the election these stats belong to")
     hour: datetime = Field(..., description="Hour timestamp (rounded to hour)")
+    timestamp: datetime = Field(..., description="Exact timestamp for the stats")
     bulletins_issued: int = Field(0, description="Number of bulletins issued in this hour")
     votes_cast: int = Field(0, description="Number of votes cast in this hour")
     transaction_count: int = Field(0, description="Total transactions in this hour")
     bulletin_velocity: float = Field(0.0, description="Rate of bulletin issuance per hour")
     vote_velocity: float = Field(0.0, description="Rate of vote casting per hour")
+    participation_rate: float = Field(0.0, description="Percentage of registered voters who cast votes")
+    anomaly_count: int = Field(0, description="Count of anomalies detected in this hour")
 
 
 class HourlyStatsCreate(HourlyStatsBase):
@@ -52,11 +60,15 @@ class HourlyStatsUpdate(BaseSchema):
     All fields are optional to allow partial updates.
     """
     
+    election_id: Optional[str] = Field(None, description="ID of the election these stats belong to")
+    timestamp: Optional[datetime] = Field(None, description="Exact timestamp for the stats")
     bulletins_issued: Optional[int] = Field(None, description="Number of bulletins issued in this hour")
     votes_cast: Optional[int] = Field(None, description="Number of votes cast in this hour")
     transaction_count: Optional[int] = Field(None, description="Total transactions in this hour")
     bulletin_velocity: Optional[float] = Field(None, description="Rate of bulletin issuance per hour")
     vote_velocity: Optional[float] = Field(None, description="Rate of vote casting per hour")
+    participation_rate: Optional[float] = Field(None, description="Percentage of registered voters who cast votes")
+    anomaly_count: Optional[int] = Field(None, description="Count of anomalies detected in this hour")
 
 
 class HourlyStatsResponse(ResponseBase, HourlyStatsBase):

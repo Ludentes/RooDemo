@@ -29,6 +29,7 @@ class Election(Base, UUIDMixin, TimestampMixin):
         total_constituencies (int): Total number of constituencies in this election
         created_at (datetime): Record creation timestamp
         constituencies (List[Constituency]): Constituencies in this election
+        hourly_stats (List[HourlyStats]): Hourly statistics for this election
     """
     
     __tablename__ = "elections"
@@ -45,6 +46,7 @@ class Election(Base, UUIDMixin, TimestampMixin):
     
     # Relationships
     constituencies = relationship("Constituency", back_populates="election", cascade="all, delete-orphan")
+    hourly_stats = relationship("HourlyStats", back_populates="election")
     
     def __repr__(self):
         """String representation of the Election model."""

@@ -1,219 +1,363 @@
-# Transaction Processing System - Implementation Plan
+# Implementation Plan: Metrics Calculation System
 
-This document outlines the detailed implementation plan for the Transaction Processing System, including tasks, dependencies, and estimated effort.
+## 1. Overview
 
-## Implementation Phases
+The Metrics Calculation System is a comprehensive solution for calculating, storing, and retrieving metrics related to election monitoring. It addresses the current inconsistencies in the HourlyStats model and CRUD operations, and implements a robust architecture for metrics calculation and caching.
 
-The implementation is divided into several phases to ensure a systematic approach:
+### 1.1 Key Components
 
-1. **Foundation Phase**: Enhance existing models and CRUD operations
-2. **Core Services Phase**: Implement validation and core services
-3. **API Phase**: Implement API endpoints
-4. **Testing Phase**: Implement comprehensive tests
-5. **Integration Phase**: Integrate with existing systems
+1. **Enhanced HourlyStats Model**: Fix inconsistencies and add missing fields
+2. **Hourly Statistics Aggregation Service**: Aggregate transaction data into hourly statistics
+3. **Constituency Metrics Calculator**: Calculate metrics for constituencies
+4. **Participation Rate Calculation**: Calculate participation rates at different levels
+5. **Automatic Metrics Update Mechanism**: Ensure metrics are updated automatically
+6. **Metrics Caching System**: Improve performance through caching
+7. **Metrics API Endpoints**: Expose metrics data to clients
+8. **Metrics Calculation Tests**: Ensure the system works correctly
 
-## Detailed Tasks
+## 2. Current Issues and Gaps
 
-### Phase 1: Foundation (Estimated: 1 hour)
+### 2.1 HourlyStats Model Issues
 
-#### Task 1.1: Enhance Transaction Model
-- Review existing Transaction model
-- Add any necessary fields or indexes
-- Update relationships if needed
-- **Dependencies**: None
-- **Estimated Effort**: 15 minutes
+- Missing fields:
+  - `election_id`: Foreign key to the Election model
+  - `participation_rate`: Float field to store the participation rate
+  - `anomaly_count`: Integer field to store the count of anomalies
+  - `timestamp`: DateTime field to store the exact timestamp
 
-#### Task 1.2: Enhance Transaction Schemas
-- Update TransactionBase schema
-- Add new schemas for batch processing
-- Add new schemas for query parameters
-- Add new schemas for statistics
-- **Dependencies**: Task 1.1
-- **Estimated Effort**: 20 minutes
+- Inconsistencies:
+  - References to `election_id` in CRUD operations but the field doesn't exist in the model
+  - References to `participation_rate` and `anomaly_count` in CRUD operations but the fields don't exist in the model
+  - References to `timestamp` in CRUD operations but the field doesn't exist in the model
 
-#### Task 1.3: Enhance Transaction CRUD
-- Add new methods for advanced querying
-- Add new methods for batch operations
-- Optimize existing methods for performance
-- **Dependencies**: Task 1.1
-- **Estimated Effort**: 25 minutes
+### 2.2 Missing Services
 
-### Phase 2: Core Services (Estimated: 1.5 hours)
+- No dedicated service for hourly statistics aggregation
+- No constituency metrics calculator
+- No participation rate calculation logic
+- No automatic metrics update mechanism
+- No metrics caching system
 
-#### Task 2.1: Implement Transaction Validator
-- Create transaction_validator.py
-- Implement validation rules for transactions
-- Implement duplicate detection
-- **Dependencies**: Task 1.2
-- **Estimated Effort**: 30 minutes
+### 2.3 API Endpoints
 
-#### Task 2.2: Enhance Transaction Service
-- Add methods for CRUD operations
-- Add methods for transaction statistics
-- Integrate with validator
-- **Dependencies**: Tasks 1.3, 2.1
-- **Estimated Effort**: 30 minutes
+- Limited dashboard endpoints that don't expose detailed metrics
+- No specific metrics API endpoints
 
-#### Task 2.3: Implement Batch Processor
-- Create transaction_batch_processor.py
-- Implement batch processing logic
-- Implement error handling for batches
-- **Dependencies**: Task 2.2
-- **Estimated Effort**: 30 minutes
+### 2.4 Testing
 
-#### Task 2.4: Implement Query Service
-- Create transaction_query_service.py
-- Implement advanced query capabilities
-- Implement aggregation functions
-- **Dependencies**: Task 1.3
-- **Estimated Effort**: 30 minutes
+- No tests for metrics calculation
 
-### Phase 3: API Layer (Estimated: 1 hour)
+## 3. Implementation Details
 
-#### Task 3.1: Implement Transaction Errors
-- Create transaction_errors.py
-- Define custom exceptions
-- Implement error handling middleware
-- **Dependencies**: None
-- **Estimated Effort**: 15 minutes
+### 3.1 Enhanced HourlyStats Model
 
-#### Task 3.2: Update Dependencies
-- Add dependencies for transaction services
-- Implement dependency injection
-- **Dependencies**: Tasks 2.1, 2.2, 2.3, 2.4
-- **Estimated Effort**: 15 minutes
+#### 3.1.1 Model Changes
 
-#### Task 3.3: Implement Transaction API
-- Create transactions.py router
-- Implement CRUD endpoints
-- Implement batch processing endpoint
-- Implement query endpoints
-- **Dependencies**: Tasks 3.1, 3.2
-- **Estimated Effort**: 30 minutes
+Update the `HourlyStats` model in `backend/app/models/hourly_stats.py` to include the missing fields:
+- Add `election_id` as a foreign key to the Election model
+- Add `participation_rate` to store the percentage of registered voters who cast votes
+- Add `anomaly_count` to store the count of anomalies detected
+- Add `timestamp` to store the exact timestamp of the stats
 
-#### Task 3.4: Register Router
-- Update __init__.py to include transaction router
-- **Dependencies**: Task 3.3
-- **Estimated Effort**: 5 minutes
+#### 3.1.2 Schema Changes
 
-### Phase 4: Testing (Estimated: 1.5 hours)
+Update the `HourlyStatsBase` schema in `backend/app/models/schemas/hourly_stats.py` to include the missing fields:
+- Add `election_id` field
+- Add `participation_rate` field
+- Add `anomaly_count` field
+- Add `timestamp` field
 
-#### Task 4.1: Implement Unit Tests
-- Create test_transaction_validator.py
-- Create test_transaction_batch_processor.py
-- Create test_transaction_query_service.py
-- **Dependencies**: Tasks 2.1, 2.3, 2.4
-- **Estimated Effort**: 45 minutes
+Update the `HourlyStatsUpdate` schema to include the new fields as optional parameters.
 
-#### Task 4.2: Implement API Tests
-- Create test_transactions.py
-- Test all API endpoints
-- Test error handling
-- **Dependencies**: Task 3.3
-- **Estimated Effort**: 30 minutes
+#### 3.1.3 CRUD Changes
 
-#### Task 4.3: Implement E2E Tests
-- Create test_transaction_processing.py
-- Test complete transaction processing workflows
-- **Dependencies**: All previous tasks
-- **Estimated Effort**: 30 minutes
+Update the `HourlyStatsCRUD` class in `backend/app/crud/hourly_stats.py` to ensure all methods correctly use the new fields.
 
-### Phase 5: Integration (Estimated: 1 hour)
+### 3.2 Hourly Statistics Aggregation Service
 
-#### Task 5.1: Integrate with File Processing
-- Update file_service.py to use new transaction services
-- **Dependencies**: Tasks 2.2, 2.3
-- **Estimated Effort**: 20 minutes
+Create a new service in `backend/app/services/hourly_stats_service.py` that will:
+- Aggregate transaction data for a specific constituency and hour
+- Calculate metrics like bulletins issued, votes cast, transaction count, etc.
+- Calculate velocities (rate of bulletin issuance, rate of vote casting)
+- Calculate participation rate
+- Create or update hourly stats in the database
 
-#### Task 5.2: Integrate with Dashboard
-- Update dashboard_service.py to use new transaction query service
-- **Dependencies**: Task 2.4
-- **Estimated Effort**: 20 minutes
+### 3.3 Constituency Metrics Calculator
 
-#### Task 5.3: Documentation
-- Update API documentation
-- Add usage examples
-- **Dependencies**: All previous tasks
-- **Estimated Effort**: 20 minutes
+Create a new service in `backend/app/services/constituency_metrics_service.py` that will:
+- Calculate metrics for a constituency based on hourly stats
+- Calculate total metrics (bulletins, votes, transactions, anomalies)
+- Calculate participation rate and anomaly score
+- Calculate hourly activity patterns
+- Update the constituency model with calculated metrics
+- Support metrics calculation by time period (hour, day, week, month)
 
-## Implementation Schedule
+### 3.4 Participation Rate Calculation
 
-| Phase | Task | Description | Dependencies | Estimated Effort |
-|-------|------|-------------|--------------|------------------|
-| 1 | 1.1 | Enhance Transaction Model | None | 15 minutes |
-| 1 | 1.2 | Enhance Transaction Schemas | 1.1 | 20 minutes |
-| 1 | 1.3 | Enhance Transaction CRUD | 1.1 | 25 minutes |
-| 2 | 2.1 | Implement Transaction Validator | 1.2 | 30 minutes |
-| 2 | 2.2 | Enhance Transaction Service | 1.3, 2.1 | 30 minutes |
-| 2 | 2.3 | Implement Batch Processor | 2.2 | 30 minutes |
-| 2 | 2.4 | Implement Query Service | 1.3 | 30 minutes |
-| 3 | 3.1 | Implement Transaction Errors | None | 15 minutes |
-| 3 | 3.2 | Update Dependencies | 2.1, 2.2, 2.3, 2.4 | 15 minutes |
-| 3 | 3.3 | Implement Transaction API | 3.1, 3.2 | 30 minutes |
-| 3 | 3.4 | Register Router | 3.3 | 5 minutes |
-| 4 | 4.1 | Implement Unit Tests | 2.1, 2.3, 2.4 | 45 minutes |
-| 4 | 4.2 | Implement API Tests | 3.3 | 30 minutes |
-| 4 | 4.3 | Implement E2E Tests | All previous | 30 minutes |
-| 5 | 5.1 | Integrate with File Processing | 2.2, 2.3 | 20 minutes |
-| 5 | 5.2 | Integrate with Dashboard | 2.4 | 20 minutes |
-| 5 | 5.3 | Documentation | All previous | 20 minutes |
+Implement participation rate calculation in both the hourly statistics aggregation service and the constituency metrics calculator using the formula:
+```
+Participation Rate = (Votes Cast / Registered Voters) * 100
+```
 
-## Total Estimated Effort: 6 hours
+### 3.5 Automatic Metrics Update Mechanism
 
-## Implementation Approach
+Create a new service in `backend/app/services/metrics_update_service.py` that will:
+- Provide a queue-based system for metrics updates
+- Support different update triggers (new transaction, scheduled update, manual trigger)
+- Process updates asynchronously
+- Handle failures and retries
+- Run scheduled updates for active elections
 
-### Incremental Development
-- Implement one phase at a time
-- Test each component before moving to the next
-- Integrate with existing systems incrementally
+### 3.6 Metrics Caching System
 
-### Test-Driven Development
-- Write tests before implementing functionality
-- Ensure high test coverage
-- Use tests to validate requirements
+Create a new service in `backend/app/services/metrics_cache_service.py` that will:
+- Provide a consistent API for cache operations (get, set, delete)
+- Support different cache backends (in-memory, Redis, etc.)
+- Implement cache invalidation strategies
+- Support time-based expiration
 
-### Code Quality
-- Follow existing coding standards
-- Add comprehensive documentation
-- Use type hints for better IDE support
-- Implement proper error handling
+### 3.7 Metrics API Endpoints
 
-## Risk Management
+Create a new router in `backend/app/api/routes/metrics.py` that will expose the following endpoints:
 
-### Potential Risks
+#### 3.7.1 Hourly Stats Endpoints
 
-1. **Integration Issues**: The new transaction processing system might not integrate smoothly with existing file processing.
-   - **Mitigation**: Carefully review existing code and ensure backward compatibility.
+```python
+@router.get("/hourly-stats/constituency/{constituency_id}")
+async def get_hourly_stats_by_constituency(
+    constituency_id: str,
+    start_time: Optional[datetime] = None,
+    end_time: Optional[datetime] = None,
+    db: Session = Depends(get_db),
+    cache: MetricsCacheService = Depends(get_metrics_cache)
+):
+    """
+    Get hourly stats for a constituency.
+    """
+    # Implementation details...
+```
 
-2. **Performance Issues**: Batch processing might cause performance issues with large datasets.
-   - **Mitigation**: Implement proper pagination and optimize database queries.
+```python
+@router.get("/hourly-stats/election/{election_id}")
+async def get_hourly_stats_by_election(
+    election_id: str,
+    start_time: Optional[datetime] = None,
+    end_time: Optional[datetime] = None,
+    db: Session = Depends(get_db),
+    cache: MetricsCacheService = Depends(get_metrics_cache)
+):
+    """
+    Get hourly stats for an election.
+    """
+    # Implementation details...
+```
 
-3. **Data Consistency**: Concurrent transaction processing might lead to data consistency issues.
-   - **Mitigation**: Use database transactions and implement proper locking mechanisms.
+#### 3.7.2 Constituency Metrics Endpoints
 
-4. **Error Handling**: Incomplete error handling might lead to system instability.
-   - **Mitigation**: Implement comprehensive error handling and logging.
+```python
+@router.get("/metrics/constituency/{constituency_id}")
+async def get_constituency_metrics(
+    constituency_id: str,
+    db: Session = Depends(get_db),
+    cache: MetricsCacheService = Depends(get_metrics_cache)
+):
+    """
+    Get metrics for a constituency.
+    """
+    # Implementation details...
+```
 
-## Verification Strategy
+```python
+@router.get("/metrics/constituency/{constituency_id}/time-period")
+async def get_constituency_metrics_by_time_period(
+    constituency_id: str,
+    period: str = "day",
+    start_time: Optional[datetime] = None,
+    end_time: Optional[datetime] = None,
+    db: Session = Depends(get_db),
+    cache: MetricsCacheService = Depends(get_metrics_cache)
+):
+    """
+    Get metrics for a constituency by time period.
+    """
+    # Implementation details...
+```
 
-1. **Unit Tests**: Verify individual components work as expected.
-2. **Integration Tests**: Verify components work together correctly.
-3. **E2E Tests**: Verify complete workflows function correctly.
-4. **Manual Testing**: Perform manual testing of key functionality.
-5. **Code Review**: Conduct thorough code review before merging.
+#### 3.7.3 Election Metrics Endpoints
 
-## Handoff to Systematic Developer
+```python
+@router.get("/metrics/election/{election_id}")
+async def get_election_metrics(
+    election_id: str,
+    db: Session = Depends(get_db),
+    cache: MetricsCacheService = Depends(get_metrics_cache)
+):
+    """
+    Get metrics for an election.
+    """
+    # Implementation details...
+```
 
-Once the planning is complete, the task will be handed off to the Systematic Developer for implementation. The following artifacts will be provided:
+```python
+@router.get("/metrics/election/{election_id}/constituencies")
+async def get_election_constituency_metrics(
+    election_id: str,
+    db: Session = Depends(get_db),
+    cache: MetricsCacheService = Depends(get_metrics_cache)
+):
+    """
+    Get metrics for all constituencies in an election.
+    """
+    # Implementation details...
+```
 
-1. Task Definition (task-definition.md)
-2. Architecture Plan (task-architecture.md)
-3. Interfaces Definition (interfaces.md)
-4. File Structure (file-structure.md)
-5. Implementation Plan (implementation-plan.md)
+#### 3.7.4 Dashboard Metrics Endpoints
 
-The Systematic Developer should follow the implementation plan and refer to the other documents for details on architecture, interfaces, and file structure.
+```python
+@router.get("/metrics/dashboard/summary")
+async def get_dashboard_metrics_summary(
+    db: Session = Depends(get_db),
+    cache: MetricsCacheService = Depends(get_metrics_cache)
+):
+    """
+    Get summary metrics for the dashboard.
+    """
+    # Implementation details...
+```
 
-## Conclusion
+```python
+@router.get("/metrics/dashboard/detailed")
+async def get_dashboard_metrics_detailed(
+    db: Session = Depends(get_db),
+    cache: MetricsCacheService = Depends(get_metrics_cache)
+):
+    """
+    Get detailed metrics for the dashboard.
+    """
+    # Implementation details...
+```
 
-This implementation plan provides a detailed roadmap for implementing the Transaction Processing System. By following this plan, the Systematic Developer can implement the system in a structured and efficient manner, ensuring that all requirements are met and the system integrates smoothly with existing components.
+### 3.8 Metrics Calculation Tests
+
+Create tests for the metrics calculation system in the following files:
+
+#### 3.8.1 Model Tests
+
+Create tests for the HourlyStats model in `backend/tests/test_models/test_hourly_stats.py`:
+- Test model creation
+- Test model relationships
+- Test model methods
+
+#### 3.8.2 CRUD Tests
+
+Create tests for the HourlyStats CRUD operations in `backend/tests/test_crud/test_hourly_stats_crud.py`:
+- Test create operation
+- Test read operations
+- Test update operation
+- Test delete operation
+- Test specialized methods
+
+#### 3.8.3 Service Tests
+
+Create tests for the metrics services:
+- `backend/tests/services/test_hourly_stats_service.py`
+- `backend/tests/services/test_constituency_metrics_service.py`
+- `backend/tests/services/test_metrics_update_service.py`
+- `backend/tests/services/test_metrics_cache_service.py`
+
+#### 3.8.4 API Tests
+
+Create tests for the metrics API endpoints in `backend/tests/api/test_metrics.py`:
+- Test hourly stats endpoints
+- Test constituency metrics endpoints
+- Test election metrics endpoints
+- Test dashboard metrics endpoints
+
+## 4. Implementation Phases
+
+### 4.1 Phase 1: Model and Schema Updates
+
+1. Update the HourlyStats model with missing fields
+2. Update the HourlyStats schemas
+3. Update the HourlyStats CRUD operations
+4. Create database migration for model changes
+5. Run migration to update the database schema
+
+### 4.2 Phase 2: Core Services Implementation
+
+1. Implement the hourly statistics aggregation service
+2. Implement the constituency metrics calculator
+3. Implement the participation rate calculation
+4. Implement the metrics caching system
+5. Write tests for the core services
+
+### 4.3 Phase 3: Automatic Update Mechanism
+
+1. Implement the metrics update service
+2. Implement the update queue
+3. Implement the scheduled updates
+4. Implement the update triggers
+5. Write tests for the update mechanism
+
+### 4.4 Phase 4: API Endpoints
+
+1. Implement the metrics API router
+2. Implement the hourly stats endpoints
+3. Implement the constituency metrics endpoints
+4. Implement the election metrics endpoints
+5. Implement the dashboard metrics endpoints
+6. Write tests for the API endpoints
+
+### 4.5 Phase 5: Integration and Testing
+
+1. Integrate all components
+2. Write integration tests
+3. Perform performance testing
+4. Fix any issues found during testing
+5. Document the metrics calculation system
+
+## 5. Dependencies and Prerequisites
+
+- SQLAlchemy for database operations
+- FastAPI for API endpoints
+- Pydantic for data validation
+- Alembic for database migrations
+- Redis (optional) for caching
+- Pytest for testing
+
+## 6. Conclusion and Handoff
+
+This implementation plan provides a comprehensive approach to implementing a metrics calculation system for the Election Monitoring System. It addresses the current issues with the HourlyStats model and provides a clear architecture for the metrics system.
+
+### 6.1 Handoff to Systematic Developer
+
+The implementation should proceed in the phases outlined above, with each phase being completed and tested before moving on to the next. The Systematic Developer should:
+
+1. Start with the model and schema updates
+2. Implement the core services
+3. Add the automatic update mechanism
+4. Create the API endpoints
+5. Integrate and test all components
+
+### 6.2 Key Considerations
+
+- Ensure proper error handling throughout the implementation
+- Implement comprehensive logging for debugging
+- Use caching to improve performance
+- Write thorough tests for all components
+- Document the API endpoints and services
+
+### 6.3 Success Criteria
+
+The implementation will be considered successful when:
+
+1. All model inconsistencies are fixed
+2. Hourly statistics are correctly aggregated
+3. Constituency metrics are accurately calculated
+4. Participation rates are correctly computed
+5. Metrics are automatically updated
+6. Metrics are properly cached
+7. API endpoints return correct data
+8. All tests pass
+
+With this implementation plan, the Systematic Developer has a clear roadmap for implementing the metrics calculation system.

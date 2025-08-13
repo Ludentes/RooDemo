@@ -12,6 +12,7 @@ from typing import List, Dict
 from pathlib import Path
 from fastapi import APIRouter, UploadFile, File, Depends, HTTPException, BackgroundTasks, Form
 from sqlalchemy.orm import Session
+import datetime
 import time
 
 from app.api.dependencies import get_db
@@ -88,7 +89,7 @@ async def upload_file(
             transaction_create = TransactionCreate(
                 constituency_id=transaction.constituency_id,
                 block_height=transaction.block_height,
-                timestamp=datetime.fromisoformat(transaction.timestamp),
+                timestamp=datetime.datetime.fromisoformat(transaction.timestamp),
                 type=transaction.type,
                 raw_data=transaction.raw_data,
                 operation_data=transaction.operation_data,
