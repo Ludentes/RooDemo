@@ -1,315 +1,209 @@
-# Frontend Directory Structure
+# Transaction Processing System - File Structure
 
-This document outlines the directory structure for the Election Monitoring System frontend. The structure follows a feature-based organization with clear separation of concerns.
+This document outlines the file structure for the Transaction Processing System implementation, including new files to be created and existing files to be modified.
 
-## Root Structure
+## New Files
 
-```
-frontend/
-├── .eslintrc.js           # ESLint configuration
-├── .gitignore             # Git ignore file
-├── .prettierrc            # Prettier configuration
-├── components.json        # shadcn/ui configuration
-├── index.html             # HTML entry point
-├── package.json           # NPM package configuration
-├── postcss.config.ts      # PostCSS configuration
-├── README.md              # Project documentation
-├── tailwind.config.js     # Tailwind CSS configuration
-├── tsconfig.json          # TypeScript configuration
-├── tsconfig.node.json     # TypeScript configuration for Node.js
-└── vite.config.ts         # Vite configuration
-```
-
-## Source Directory Structure
+### API Layer
 
 ```
-frontend/src/
-├── assets/                # Static assets
-│   ├── fonts/             # Font files
-│   └── images/            # Image files
-├── components/            # Reusable UI components
-│   ├── ui/                # shadcn/ui components
-│   ├── layout/            # Layout components
-│   └── common/            # Common components
-├── features/              # Feature-specific components and logic
-│   ├── dashboard/         # Dashboard feature
-│   ├── constituencies/    # Constituencies feature
-│   ├── alerts/            # Alerts feature
-│   └── transactions/      # Transactions feature
-├── hooks/                 # Custom React hooks
-├── lib/                   # Utility functions and helpers
-├── services/              # API and other services
-│   ├── api/               # API client and services
-│   └── websocket/         # WebSocket service
-├── store/                 # State management (Zustand)
-├── types/                 # TypeScript type definitions
-├── App.tsx                # Main App component
-├── index.css              # Global CSS
-├── main.tsx               # Application entry point
-├── routes.tsx             # Route definitions
-└── vite-env.d.ts          # Vite environment type definitions
+backend/app/api/routes/transactions.py
 ```
+- Purpose: Implements the transaction API endpoints
+- Contains: FastAPI router with endpoints for CRUD operations on transactions
 
-## Detailed Structure
-
-### Components Directory
+### Service Layer
 
 ```
-frontend/src/components/
-├── ui/                    # shadcn/ui components
-│   ├── alert-dialog.tsx
-│   ├── avatar.tsx
-│   ├── button.tsx
-│   ├── card.tsx
-│   ├── checkbox.tsx
-│   ├── dialog.tsx
-│   ├── dropdown-menu.tsx
-│   ├── input.tsx
-│   ├── label.tsx
-│   ├── popover.tsx
-│   ├── progress.tsx
-│   ├── scroll-area.tsx
-│   ├── select.tsx
-│   ├── separator.tsx
-│   ├── sheet.tsx
-│   ├── skeleton.tsx
-│   ├── spinner.tsx
-│   ├── table.tsx
-│   ├── tabs.tsx
-│   ├── toast.tsx
-│   ├── toaster.tsx
-│   ├── tooltip.tsx
-│   └── use-toast.ts
-├── layout/                # Layout components
-│   ├── AppLayout.tsx      # Main application layout
-│   ├── Header.tsx         # Application header
-│   ├── Sidebar.tsx        # Application sidebar
-│   └── Footer.tsx         # Application footer
-└── common/                # Common components
-    ├── AlertBadge.tsx     # Alert badge component
-    ├── Card.tsx           # Card component
-    ├── Chart.tsx          # Chart component
-    ├── DataTable.tsx      # Data table component
-    ├── EmptyState.tsx     # Empty state component
-    ├── ErrorBoundary.tsx  # Error boundary component
-    ├── ErrorDisplay.tsx   # Error display component
-    ├── LoadingSpinner.tsx # Loading spinner component
-    ├── NotFound.tsx       # Not found component
-    ├── Pagination.tsx     # Pagination component
-    ├── StatusBadge.tsx    # Status badge component
-    └── TimeAgo.tsx        # Time ago component
+backend/app/services/transaction_validator.py
 ```
-
-### Features Directory
+- Purpose: Implements transaction validation logic
+- Contains: TransactionValidator class with methods for validating transactions
 
 ```
-frontend/src/features/
-├── dashboard/             # Dashboard feature
-│   ├── components/        # Dashboard-specific components
-│   │   ├── ActivityTimeline.tsx
-│   │   ├── DashboardSummaryCard.tsx
-│   │   ├── ElectionStatusCard.tsx
-│   │   ├── ParticipationChart.tsx
-│   │   └── RecentAlerts.tsx
-│   ├── hooks/             # Dashboard-specific hooks
-│   │   └── useDashboard.ts
-│   └── Dashboard.tsx      # Main dashboard component
-├── constituencies/        # Constituencies feature
-│   ├── components/        # Constituency-specific components
-│   │   ├── ConstituencyCard.tsx
-│   │   ├── ConstituencyFilter.tsx
-│   │   ├── ConstituencyMap.tsx
-│   │   ├── ConstituencyStats.tsx
-│   │   ├── HourlyStatsChart.tsx
-│   │   └── TransactionList.tsx
-│   ├── hooks/             # Constituency-specific hooks
-│   │   └── useConstituency.ts
-│   ├── ConstituencyDetail.tsx # Constituency detail component
-│   └── ConstituencyList.tsx   # Constituency list component
-├── alerts/                # Alerts feature
-│   ├── components/        # Alert-specific components
-│   │   ├── AlertDetail.tsx
-│   │   ├── AlertFilter.tsx
-│   │   └── AlertList.tsx
-│   ├── hooks/             # Alert-specific hooks
-│   │   └── useAlerts.ts
-│   ├── AlertDetail.tsx    # Alert detail component
-│   └── AlertList.tsx      # Alert list component
-└── transactions/          # Transactions feature
-    ├── components/        # Transaction-specific components
-    │   ├── TransactionDetail.tsx
-    │   ├── TransactionFilter.tsx
-    │   └── TransactionList.tsx
-    ├── hooks/             # Transaction-specific hooks
-    │   └── useTransactions.ts
-    ├── TransactionDetail.tsx # Transaction detail component
-    └── TransactionList.tsx   # Transaction list component
+backend/app/services/transaction_batch_processor.py
 ```
-
-### Hooks Directory
+- Purpose: Implements batch processing for transactions
+- Contains: TransactionBatchProcessor class with methods for processing transaction batches
 
 ```
-frontend/src/hooks/
-├── useApi.ts              # Hook for API calls
-├── useDebounce.ts         # Hook for debouncing values
-├── useLocalStorage.ts     # Hook for local storage
-├── useMediaQuery.ts       # Hook for media queries
-├── useNotification.ts     # Hook for notifications
-├── usePagination.ts       # Hook for pagination
-├── useSorting.ts          # Hook for sorting
-├── useTheme.ts            # Hook for theme management
-└── useWebSocket.ts        # Hook for WebSocket connections
+backend/app/services/transaction_query_service.py
 ```
+- Purpose: Implements advanced query capabilities for transactions
+- Contains: TransactionQueryService class with methods for building and executing queries
 
-### Services Directory
+### Error Handling
 
 ```
-frontend/src/services/
-├── api/                   # API services
-│   ├── client.ts          # API client
-│   ├── index.ts           # API service exports
-│   ├── alertsApi.ts       # Alerts API service
-│   ├── constituenciesApi.ts # Constituencies API service
-│   ├── dashboardApi.ts    # Dashboard API service
-│   ├── electionsApi.ts    # Elections API service
-│   ├── filesApi.ts        # Files API service
-│   └── transactionsApi.ts # Transactions API service
-└── websocket/             # WebSocket services
-    ├── client.ts          # WebSocket client
-    └── index.ts           # WebSocket service exports
+backend/app/api/errors/transaction_errors.py
 ```
+- Purpose: Defines custom exceptions for transaction operations
+- Contains: Exception classes for different error scenarios
 
-### Store Directory
+### Tests
 
 ```
-frontend/src/store/
-├── index.ts               # Store exports
-├── uiStore.ts             # UI state store
-├── electionStore.ts       # Election state store
-├── constituencyStore.ts   # Constituency state store
-├── alertStore.ts          # Alert state store
-└── transactionStore.ts    # Transaction state store
+backend/tests/api/test_transactions.py
 ```
-
-### Types Directory
+- Purpose: Tests for transaction API endpoints
+- Contains: Test cases for each endpoint
 
 ```
-frontend/src/types/
-├── index.ts               # Type exports
-├── api.ts                 # API-related types
-├── alert.ts               # Alert-related types
-├── constituency.ts        # Constituency-related types
-├── election.ts            # Election-related types
-├── transaction.ts         # Transaction-related types
-└── ui.ts                  # UI-related types
+backend/tests/services/test_transaction_validator.py
 ```
-
-### Lib Directory
+- Purpose: Tests for transaction validation
+- Contains: Test cases for validation rules
 
 ```
-frontend/src/lib/
-├── utils.ts               # General utility functions
-├── date.ts                # Date utility functions
-├── format.ts              # Formatting utility functions
-├── validation.ts          # Validation utility functions
-└── storage.ts             # Storage utility functions
+backend/tests/services/test_transaction_batch_processor.py
+```
+- Purpose: Tests for transaction batch processing
+- Contains: Test cases for batch processing functionality
+
+```
+backend/tests/services/test_transaction_query_service.py
+```
+- Purpose: Tests for transaction query service
+- Contains: Test cases for query functionality
+
+```
+backend/tests/e2e/test_transaction_processing.py
+```
+- Purpose: End-to-end tests for transaction processing
+- Contains: Test cases for complete transaction processing workflows
+
+## Files to Modify
+
+### API Layer
+
+```
+backend/app/api/routes/__init__.py
+```
+- Purpose: Register the transaction router
+- Changes: Add import and include the transaction router
+
+```
+backend/app/api/dependencies.py
+```
+- Purpose: Add dependencies for transaction services
+- Changes: Add functions to get transaction service instances
+
+### Service Layer
+
+```
+backend/app/services/transaction_service.py
+```
+- Purpose: Enhance the existing transaction service
+- Changes:
+  - Add methods for CRUD operations
+  - Add methods for batch processing
+  - Add methods for advanced querying
+
+```
+backend/app/services/__init__.py
+```
+- Purpose: Register new service classes
+- Changes: Add imports for new service classes
+
+### Models Layer
+
+```
+backend/app/models/schemas/transaction.py
+```
+- Purpose: Enhance transaction schemas
+- Changes:
+  - Add new schemas for batch processing
+  - Add new schemas for query parameters
+  - Add new schemas for statistics
+
+```
+backend/app/models/transaction.py
+```
+- Purpose: Enhance the transaction model
+- Changes:
+  - Add new fields if needed
+  - Add new indexes for performance
+  - Add new relationships if needed
+
+### CRUD Layer
+
+```
+backend/app/crud/transaction.py
+```
+- Purpose: Enhance transaction CRUD operations
+- Changes:
+  - Add new methods for advanced querying
+  - Add new methods for batch operations
+  - Optimize existing methods for performance
+
+## Directory Structure
+
+```
+backend/
+├── app/
+│   ├── api/
+│   │   ├── routes/
+│   │   │   ├── __init__.py
+│   │   │   ├── transactions.py (new)
+│   │   │   └── ...
+│   │   ├── dependencies.py
+│   │   └── errors/
+│   │       ├── __init__.py
+│   │       ├── transaction_errors.py (new)
+│   │       └── ...
+│   ├── crud/
+│   │   ├── transaction.py
+│   │   └── ...
+│   ├── models/
+│   │   ├── transaction.py
+│   │   ├── schemas/
+│   │   │   ├── transaction.py
+│   │   │   └── ...
+│   │   └── ...
+│   └── services/
+│       ├── __init__.py
+│       ├── transaction_service.py
+│       ├── transaction_validator.py (new)
+│       ├── transaction_batch_processor.py (new)
+│       ├── transaction_query_service.py (new)
+│       └── ...
+└── tests/
+    ├── api/
+    │   ├── test_transactions.py (new)
+    │   └── ...
+    ├── services/
+    │   ├── test_transaction_validator.py (new)
+    │   ├── test_transaction_batch_processor.py (new)
+    │   ├── test_transaction_query_service.py (new)
+    │   └── ...
+    └── e2e/
+        ├── test_transaction_processing.py (new)
+        └── ...
 ```
 
-## File Naming Conventions
+## Implementation Order
 
-1. **Component Files**: PascalCase (e.g., `Button.tsx`, `DataTable.tsx`)
-2. **Hook Files**: camelCase with 'use' prefix (e.g., `useTheme.ts`, `useApi.ts`)
-3. **Utility Files**: camelCase (e.g., `utils.ts`, `format.ts`)
-4. **Store Files**: camelCase (e.g., `uiStore.ts`, `electionStore.ts`)
-5. **Type Files**: camelCase (e.g., `api.ts`, `election.ts`)
-6. **Configuration Files**: kebab-case (e.g., `tailwind.config.js`, `tsconfig.json`)
+1. Enhance the transaction model and schemas
+2. Enhance the transaction CRUD operations
+3. Implement the transaction validator
+4. Enhance the transaction service
+5. Implement the transaction batch processor
+6. Implement the transaction query service
+7. Implement the transaction API endpoints
+8. Implement error handling
+9. Implement tests
 
-## Import Conventions
+## Dependencies
 
-1. **Absolute Imports**: Use absolute imports with path aliases for better readability and maintainability.
+- FastAPI for API endpoints
+- SQLAlchemy for database operations
+- Pydantic for data validation
+- pytest for testing
 
-```typescript
-// Good
-import { Button } from '@/components/ui/button';
-import { useTheme } from '@/hooks/useTheme';
+## Notes
 
-// Avoid
-import { Button } from '../../components/ui/button';
-import { useTheme } from '../../hooks/useTheme';
-```
-
-2. **Import Order**: Group imports in the following order:
-   - React and React-related imports
-   - Third-party library imports
-   - Internal absolute imports
-   - Internal relative imports
-   - CSS/SCSS imports
-
-```typescript
-// React and React-related imports
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-
-// Third-party library imports
-import { format } from 'date-fns';
-import { BarChart, Bar } from 'recharts';
-
-// Internal absolute imports
-import { Button } from '@/components/ui/button';
-import { useTheme } from '@/hooks/useTheme';
-
-// Internal relative imports
-import { AlertBadge } from '../common/AlertBadge';
-
-// CSS/SCSS imports
-import './styles.css';
-```
-
-## Component Organization
-
-Each component should follow a consistent organization:
-
-1. **Imports**: Following the import conventions above
-2. **Types/Interfaces**: Component props and other related types
-3. **Constants**: Component-specific constants
-4. **Component**: The main component function
-5. **Helper Functions**: Component-specific helper functions
-6. **Export**: Default or named export
-
-```typescript
-// Imports
-import React from 'react';
-import { format } from 'date-fns';
-import { Card } from '@/components/ui/card';
-
-// Types/Interfaces
-interface TimeAgoProps {
-  date: string;
-  format?: 'short' | 'long';
-}
-
-// Constants
-const FORMAT_OPTIONS = {
-  short: { addSuffix: true },
-  long: { addSuffix: true, includeSeconds: true },
-};
-
-// Component
-export const TimeAgo = ({ date, format = 'short' }: TimeAgoProps) => {
-  const formattedDate = formatDate(date, format);
-  
-  return <span title={new Date(date).toLocaleString()}>{formattedDate}</span>;
-};
-
-// Helper Functions
-function formatDate(date: string, format: 'short' | 'long'): string {
-  return format(new Date(date), FORMAT_OPTIONS[format]);
-}
-
-// Export
-export default TimeAgo;
-```
-
-## Conclusion
-
-This directory structure provides a clear organization for the Election Monitoring System frontend, with a focus on maintainability, scalability, and separation of concerns. The feature-based organization allows for easy navigation and understanding of the codebase, while the consistent naming conventions and import patterns ensure a consistent development experience.
+- Follow the existing project structure and naming conventions
+- Ensure backward compatibility with existing code
+- Add appropriate documentation and type hints
+- Implement comprehensive error handling
+- Write tests for all new functionality

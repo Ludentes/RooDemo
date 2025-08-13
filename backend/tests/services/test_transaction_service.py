@@ -42,20 +42,23 @@ def sample_transaction_data():
 def test_save_transactions(transaction_service, sample_transaction_data, mock_db):
     """Test saving transactions to the database."""
     # Arrange
-    with patch('app.crud.transaction.transaction_crud.get_by_constituency') as mock_get_by_constituency:
-        mock_get_by_constituency.return_value = []  # No existing transactions
+    with patch.object(transaction_service.validator, 'check_duplicate') as mock_check_duplicate:
+        mock_check_duplicate.return_value = False  # Transaction doesn't exist
         
-        with patch('app.crud.transaction.transaction_crud.create') as mock_create:
-            # Act
-            result = transaction_service.save_transactions([sample_transaction_data])
+        with patch('app.crud.transaction.transaction_crud.get_by_constituency') as mock_get_by_constituency:
+            mock_get_by_constituency.return_value = []  # No existing transactions
             
-            # Assert
-            assert result == 1
-            mock_get_by_constituency.assert_called_once_with(
-                db=mock_db,
-                constituency_id=sample_transaction_data.constituency_id
-            )
-            mock_create.assert_called_once()
+            with patch.object(transaction_service.validator, 'validate_transaction') as mock_validate:
+                mock_validate.return_value = []  # No validation errors
+                
+                with patch('app.crud.transaction.transaction_crud.create') as mock_create:
+                    # Act
+                    result = transaction_service.save_transactions([sample_transaction_data])
+                    
+                    # Assert
+                    assert result == 1
+                    mock_check_duplicate.assert_called_once_with(mock_db, sample_transaction_data.transaction_id)
+                    mock_validate.assert_called_once()
 
 
 def test_save_transactions_duplicate(transaction_service, sample_transaction_data, mock_db):
@@ -221,6 +224,253 @@ def test_get_transaction_statistics_constituency_not_found(transaction_service, 
         
         # Assert
         assert result == {}
+
+
+def test_get_transaction(transaction_service, mock_db):
+    """Test getting a transaction by ID."""
+    # Arrange
+    transaction_id = "65dbpXPGsbH3UsuYfvshDQsC9AcHTQx3emmKWbZKYQQS"
+    
+    with patch('app.crud.transaction.transaction_crud.get') as mock_get:
+        mock_transaction = MagicMock()
+        mock_get.return_value = mock_transaction
+        
+        # Act
+        result = transaction_service.get_transaction(transaction_id)
+        
+        # Assert
+        assert result == mock_transaction
+        mock_get.assert_called_once_with(db=mock_db, id=transaction_id)
+
+
+def test_get_transaction_not_found(transaction_service, mock_db):
+    """Test getting a transaction that doesn't exist."""
+    # Arrange
+    transaction_id = "nonexistent_id"
+    
+    with patch('app.crud.transaction.transaction_crud.get') as mock_get:
+        mock_get.return_value = None
+        
+        # Act
+        result = transaction_service.get_transaction(transaction_id)
+        
+        # Assert
+        assert result is None
+        mock_get.assert_called_once_with(db=mock_db, id=transaction_id)
+
+
+def test_create_transaction(transaction_service, mock_db):
+    """Test creating a transaction."""
+    # Arrange
+    transaction_data = MagicMock()
+    # Ensure transaction_data.id is None to avoid duplicate check
+    transaction_data.id = None
+    
+    with patch.object(transaction_service.validator, 'validate_transaction') as mock_validate:
+        mock_validate.return_value = []  # No validation errors
+        
+        with patch('app.crud.transaction.transaction_crud.create') as mock_create:
+            mock_transaction = MagicMock()
+            mock_create.return_value = mock_transaction
+            
+            # Act
+            result = transaction_service.create_transaction(transaction_data)
+            
+            # Assert
+            assert result == mock_transaction
+            mock_validate.assert_called_once_with(mock_db, transaction_data)
+            mock_create.assert_called_once_with(db=mock_db, obj_in=transaction_data)
+
+
+def test_create_transaction_validation_error(transaction_service, mock_db):
+    """Test creating a transaction with validation errors."""
+    # Arrange
+    transaction_data = MagicMock()
+    
+    with patch.object(transaction_service.validator, 'validate_transaction') as mock_validate:
+        mock_validate.return_value = ["Constituency not found"]  # Validation error
+        
+        # Act & Assert
+        with pytest.raises(TransactionValidationError) as excinfo:
+            transaction_service.create_transaction(transaction_data)
+        
+        assert "Transaction validation failed" in str(excinfo.value)
+        mock_validate.assert_called_once_with(mock_db, transaction_data)
+
+
+def test_update_transaction(transaction_service, mock_db):
+    """Test updating a transaction."""
+    # Arrange
+    transaction_id = "65dbpXPGsbH3UsuYfvshDQsC9AcHTQx3emmKWbZKYQQS"
+    transaction_data = MagicMock()
+    
+    with patch('app.crud.transaction.transaction_crud.get') as mock_get:
+        mock_transaction = MagicMock()
+        mock_get.return_value = mock_transaction
+        
+        with patch('app.crud.transaction.transaction_crud.update') as mock_update:
+            mock_updated_transaction = MagicMock()
+            mock_update.return_value = mock_updated_transaction
+            
+            # Act
+            result = transaction_service.update_transaction(transaction_id, transaction_data)
+            
+            # Assert
+            assert result == mock_updated_transaction
+            mock_get.assert_called_once_with(db=mock_db, id=transaction_id)
+            mock_update.assert_called_once_with(db=mock_db, id=transaction_id, obj_in=transaction_data)
+
+
+def test_update_transaction_not_found(transaction_service, mock_db):
+    """Test updating a transaction that doesn't exist."""
+    # Arrange
+    transaction_id = "nonexistent_id"
+    transaction_data = MagicMock()
+    
+    with patch('app.crud.transaction.transaction_crud.get') as mock_get:
+        mock_get.return_value = None
+        
+        # Act
+        result = transaction_service.update_transaction(transaction_id, transaction_data)
+        
+        # Assert
+        assert result is None
+        mock_get.assert_called_once_with(db=mock_db, id=transaction_id)
+
+
+def test_delete_transaction(transaction_service, mock_db):
+    """Test deleting a transaction."""
+    # Arrange
+    transaction_id = "65dbpXPGsbH3UsuYfvshDQsC9AcHTQx3emmKWbZKYQQS"
+    
+    with patch('app.crud.transaction.transaction_crud.get') as mock_get:
+        mock_transaction = MagicMock()
+        mock_get.return_value = mock_transaction
+        
+        with patch('app.crud.transaction.transaction_crud.remove') as mock_remove:
+            # Act
+            result = transaction_service.delete_transaction(transaction_id)
+            
+            # Assert
+            assert result is True
+            mock_get.assert_called_once_with(db=mock_db, id=transaction_id)
+            mock_remove.assert_called_once_with(db=mock_db, id=transaction_id)
+
+
+def test_delete_transaction_not_found(transaction_service, mock_db):
+    """Test deleting a transaction that doesn't exist."""
+    # Arrange
+    transaction_id = "nonexistent_id"
+    
+    with patch('app.crud.transaction.transaction_crud.get') as mock_get:
+        mock_get.return_value = None
+        
+        # Act
+        result = transaction_service.delete_transaction(transaction_id)
+        
+        # Assert
+        assert result is False
+        mock_get.assert_called_once_with(db=mock_db, id=transaction_id)
+
+
+def test_get_transactions(transaction_service, mock_db):
+    """Test getting transactions with filtering and pagination."""
+    # Arrange
+    with patch('app.crud.transaction.transaction_crud.get_transactions_with_filters') as mock_get_transactions:
+        mock_transactions = [MagicMock(), MagicMock()]
+        mock_get_transactions.return_value = (mock_transactions, 2)
+        
+        # Act
+        transactions, total = transaction_service.get_transactions(
+            constituency_id="test_constituency",
+            transaction_type="blindSigIssue",
+            start_time=datetime(2024, 9, 1),
+            end_time=datetime(2024, 9, 30),
+            status="processed",
+            anomaly_detected=True,
+            source="file_upload",
+            file_id="test_file",
+            page=2,
+            limit=10,
+            sort_by="timestamp",
+            sort_order="asc"
+        )
+        
+        # Assert
+        assert transactions == mock_transactions
+        assert total == 2
+        mock_get_transactions.assert_called_once_with(
+            db=mock_db,
+            constituency_id="test_constituency",
+            transaction_type="blindSigIssue",
+            start_time=datetime(2024, 9, 1),
+            end_time=datetime(2024, 9, 30),
+            status="processed",
+            anomaly_detected=True,
+            source="file_upload",
+            file_id="test_file",
+            page=2,
+            limit=10,
+            sort_by="timestamp",
+            sort_order="asc"
+        )
+
+
+def test_process_transaction_batch(transaction_service, mock_db):
+    """Test processing a batch of transactions."""
+    # Arrange
+    transactions = [MagicMock(), MagicMock()]
+    
+    with patch.object(transaction_service.validator, 'validate_transaction_batch') as mock_validate:
+        mock_validate.return_value = {}  # No validation errors
+        
+        with patch('app.crud.transaction.transaction_crud.create_batch') as mock_create_batch:
+            mock_result = {
+                "success": True,
+                "processed": 2,
+                "failed": 0,
+                "errors": []
+            }
+            mock_create_batch.return_value = mock_result
+            
+            # Act
+            result = transaction_service.process_transaction_batch(transactions)
+            
+            # Assert
+            assert result == mock_result
+            mock_validate.assert_called_once_with(mock_db, transactions)
+            mock_create_batch.assert_called_once_with(db=mock_db, obj_in_list=transactions)
+
+
+def test_process_transaction_batch_with_validation_errors(transaction_service, mock_db):
+    """Test processing a batch of transactions with validation errors."""
+    # Arrange
+    transactions = [MagicMock(), MagicMock()]
+    
+    with patch.object(transaction_service.validator, 'validate_transaction_batch') as mock_validate:
+        mock_validate.return_value = {1: ["Constituency not found"]}  # Validation error for second transaction
+        
+        with patch('app.crud.transaction.transaction_crud.create_batch') as mock_create_batch:
+            mock_result = {
+                "success": False,
+                "processed": 1,
+                "failed": 1,
+                "errors": [{"index": 1, "error": "Database error"}]
+            }
+            mock_create_batch.return_value = mock_result
+            
+            # Act
+            result = transaction_service.process_transaction_batch(transactions)
+            
+            # Assert
+            assert result["success"] is False
+            assert result["processed"] == 1
+            assert result["failed"] == 1
+            assert len(result["errors"]) == 1
+            assert result["errors"][0]["index"] == 1
+            assert result["errors"][0]["validation_errors"] == ["Constituency not found"]
+            mock_validate.assert_called_once_with(mock_db, transactions)
+            mock_create_batch.assert_called_once_with(db=mock_db, obj_in_list=transactions)
 
 
 def test_get_transaction_statistics_error(transaction_service, mock_db):

@@ -10,6 +10,7 @@ import pytest
 from pathlib import Path
 from fastapi.testclient import TestClient
 from datetime import date
+import tempfile
 
 from app.main import app
 from app.models.constituency import Constituency
@@ -281,3 +282,165 @@ def test_nonexistent_constituency_statistics(client, db_session):
     assert response.status_code in [404, 500]
     # The error message should contain information about the failure
     assert "Constituency not found" in response.text or "not found" in response.text.lower()
+
+
+@pytest.mark.integration
+def test_watch_directory(client, db_session, temp_dir):
+    """Test watching a directory for new files."""
+    # Arrange
+    directory_path = temp_dir
+    
+    # Act
+    response = client.post(
+        "/api/files/watch-directory",
+        data={"directory_path": directory_path}
+    )
+    
+    # Assert
+    assert response.status_code == 200
+    result = response.json()
+    assert result["message"] == f"Started watching directory: {directory_path}"
+    assert result["recursive"] is True
+    assert result["patterns"] == ["*.csv"]
+    
+    # Clean up
+    client.post(
+        "/api/files/stop-watching",
+        data={"directory_path": directory_path}
+    )
+
+
+@pytest.mark.integration
+def test_watch_directory_with_options(client, db_session, temp_dir):
+    """Test watching a directory with custom options."""
+    # Arrange
+    directory_path = temp_dir
+    
+    # Act
+    response = client.post(
+        "/api/files/watch-directory",
+        data={
+            "directory_path": directory_path,
+            "recursive": False,
+            "patterns": ["*.txt", "*.json"]
+        }
+    )
+    
+    # Assert
+    assert response.status_code == 200
+    result = response.json()
+    assert result["message"] == f"Started watching directory: {directory_path}"
+    assert result["recursive"] is False
+    assert result["patterns"] == ["*.txt", "*.json"]
+    
+    # Clean up
+    client.post(
+        "/api/files/stop-watching",
+        data={"directory_path": directory_path}
+    )
+
+
+@pytest.mark.integration
+def test_watch_nonexistent_directory(client, db_session):
+    """Test watching a nonexistent directory."""
+    # Arrange
+    directory_path = "/nonexistent/directory"
+    
+    # Act
+    response = client.post(
+        "/api/files/watch-directory",
+        data={"directory_path": directory_path}
+    )
+    
+    # Assert
+    assert response.status_code == 400
+    assert "Directory not found" in response.text
+
+
+@pytest.mark.integration
+def test_stop_watching_directory(client, db_session, temp_dir):
+    """Test stopping watching a directory."""
+    # Arrange
+    directory_path = temp_dir
+    
+    # Start watching
+    client.post(
+        "/api/files/watch-directory",
+        data={"directory_path": directory_path}
+    )
+    
+    # Act
+    response = client.post(
+        "/api/files/stop-watching",
+        data={"directory_path": directory_path}
+    )
+    
+    # Assert
+    assert response.status_code == 200
+    result = response.json()
+    assert result["message"] == f"Stopped watching directory: {directory_path}"
+
+
+@pytest.mark.integration
+def test_stop_watching_all_directories(client, db_session, temp_dir):
+    """Test stopping watching all directories."""
+    # Arrange
+    directory_path1 = temp_dir
+    
+    # Create another temporary directory
+    with tempfile.TemporaryDirectory() as directory_path2:
+        # Start watching both directories
+        client.post(
+            "/api/files/watch-directory",
+            data={"directory_path": directory_path1}
+        )
+        client.post(
+            "/api/files/watch-directory",
+            data={"directory_path": directory_path2}
+        )
+        
+        # Act
+        response = client.post(
+            "/api/files/stop-watching"
+        )
+        
+        # Assert
+        assert response.status_code == 200
+        result = response.json()
+        assert result["message"] == "Stopped watching all directories"
+
+
+@pytest.mark.integration
+def test_get_watching_directories(client, db_session, temp_dir):
+    """Test getting a list of directories being watched."""
+    # Arrange
+    directory_path = temp_dir
+    
+    # Start watching
+    client.post(
+        "/api/files/watch-directory",
+        data={"directory_path": directory_path}
+    )
+    
+    # Act
+    response = client.get(
+        "/api/files/watching-directories"
+    )
+    
+    # Assert
+    assert response.status_code == 200
+    result = response.json()
+    assert result["count"] == 1
+    assert directory_path in result["directories"]
+    
+    # Clean up
+    client.post(
+        "/api/files/stop-watching"
+    )
+
+
+@pytest.fixture
+def temp_dir():
+    """Create a temporary directory for testing."""
+    with tempfile.TemporaryDirectory() as temp_dir:
+        yield temp_dir

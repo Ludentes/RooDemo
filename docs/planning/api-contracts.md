@@ -877,34 +877,140 @@ POST /api/files/upload
 
 **Request**: `multipart/form-data` with CSV file
 
-**Response**: Processing job information
+**Response**: Processing result with statistics
 
 ```json
 {
-  "message": "Processing started",
-  "job_id": "job123456"
+  "filename": "AsrxMqfGWsXEgTmvdw95omtQ4Gv1Vi4mGAvLYy23DHpM_2024-09-06_0800-0900.csv",
+  "transactions_processed": 250,
+  "constituency_id": "AsrxMqfGWsXEgTmvdw95omtQ4Gv1Vi4mGAvLYy23DHpM",
+  "date": "2024-09-06",
+  "time_range": "0800-0900",
+  "region_id": "90",
+  "region_name": "Пермский край",
+  "election_name": "Выборы депутатов Думы Красновишерского городского округа",
+  "constituency_name": "Округ №1_3"
 }
 ```
 
-#### Check File Processing Status
+#### Process Directory
 ```
-GET /api/files/status/{job_id}
+POST /api/files/process-directory
 ```
 
-**Description**: Checks the status of a file processing job.
+**Description**: Processes all CSV files in a directory.
 
-**Path Parameters**:
-- `job_id` (string, required): Unique identifier of the processing job
+**Request Body**:
+```json
+{
+  "directory_path": "/path/to/data"
+}
+```
 
-**Response**: Job status information
+**Response**: Processing result with statistics
 
 ```json
 {
-  "status": "processing",
-  "details": "Processed 250 of 1000 records",
-  "progress": 0.25,
-  "started_at": "2025-08-12T08:50:00Z",
-  "estimated_completion": "2025-08-12T08:52:00Z"
+  "files_processed": 10,
+  "transactions_processed": 2500,
+  "constituency_id": "AsrxMqfGWsXEgTmvdw95omtQ4Gv1Vi4mGAvLYy23DHpM",
+  "region_id": "90",
+  "region_name": "Пермский край",
+  "election_name": "Выборы депутатов Думы Красновишерского городского округа",
+  "constituency_name": "Округ №1_3"
+}
+```
+
+#### Watch Directory
+```
+POST /api/files/watch-directory
+```
+
+**Description**: Starts watching a directory for new files.
+
+**Request Body**:
+```json
+{
+  "directory_path": "/path/to/data",
+  "recursive": true,
+  "patterns": ["*.csv"]
+}
+```
+
+**Response**: Success message
+
+```json
+{
+  "message": "Started watching directory: /path/to/data",
+  "recursive": true,
+  "patterns": ["*.csv"]
+}
+```
+
+#### Stop Watching
+```
+POST /api/files/stop-watching
+```
+
+**Description**: Stops watching a directory or all directories.
+
+**Request Body**:
+```json
+{
+  "directory_path": "/path/to/data"  // Optional, if not provided, stops all watchers
+}
+```
+
+**Response**: Success message
+
+```json
+{
+  "message": "Stopped watching directory: /path/to/data"
+}
+```
+
+or
+
+```json
+{
+  "message": "Stopped watching all directories"
+}
+```
+
+#### Get Watching Directories
+```
+GET /api/files/watching-directories
+```
+
+**Description**: Gets a list of directories being watched.
+
+**Response**: List of directories
+
+```json
+{
+  "directories": ["/path/to/data1", "/path/to/data2"],
+  "count": 2
+}
+```
+
+#### Get Transaction Statistics
+```
+GET /api/files/statistics/{constituency_id}
+```
+
+**Description**: Gets transaction statistics for a constituency.
+
+**Path Parameters**:
+- `constituency_id` (string, required): Unique identifier of the constituency
+
+**Response**: Transaction statistics
+
+```json
+{
+  "total_transactions": 2500,
+  "bulletins_issued": 1200,
+  "votes_cast": 1000,
+  "participation_rate": 0.83
 }
 ```
 

@@ -4,10 +4,10 @@ Transaction CRUD operations for the Election Monitoring System.
 This module provides CRUD operations for the Transaction model.
 """
 
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Tuple
 from datetime import datetime
 from sqlalchemy.orm import Session
-from sqlalchemy import func, desc
+from sqlalchemy import func, desc, asc, and_
 
 from .base import BaseCRUD
 from app.models.transaction import Transaction
@@ -245,6 +245,164 @@ class TransactionCRUD(BaseCRUD[Transaction, TransactionCreate, TransactionUpdate
             Transaction.timestamp >= start_time,
             Transaction.timestamp <= end_time
         ).scalar() or 0
+    
+    def get_by_file_id(self, db: Session, *, file_id: str) -> List[Transaction]:
+        """
+        Get transactions by file ID.
+        
+        Args:
+            db: Database session
+            file_id: ID of the file that contained the transactions
+            
+        Returns:
+            List of transactions from the specified file
+        """
+        return db.query(Transaction).filter(Transaction.file_id == file_id).all()
+    
+    def get_transactions_with_filters(
+        self,
+        db: Session,
+        *,
+        constituency_id: Optional[str] = None,
+        transaction_type: Optional[str] = None,
+        start_time: Optional[datetime] = None,
+        end_time: Optional[datetime] = None,
+        status: Optional[str] = None,
+        anomaly_detected: Optional[bool] = None,
+        source: Optional[str] = None,
+        file_id: Optional[str] = None,
+        page: int = 1,
+        limit: int = 100,
+        sort_by: str = "timestamp",
+        sort_order: str = "desc"
+    ) -> Tuple[List[Transaction], int]:
+        """
+        Get transactions with filtering, pagination, and sorting.
+        
+        Args:
+            db: Database session
+            constituency_id: Filter by constituency ID
+            transaction_type: Filter by transaction type
+            start_time: Filter by start time
+            end_time: Filter by end time
+            status: Filter by status
+            anomaly_detected: Filter by anomaly detection
+            source: Filter by source
+            file_id: Filter by file ID
+            page: Page number
+            limit: Items per page
+            sort_by: Field to sort by
+            sort_order: Sort order (asc, desc)
+            
+        Returns:
+            Tuple of (transactions, total_count)
+        """
+        query = db.query(Transaction)
+        
+        # Apply filters
+        if constituency_id:
+            query = query.filter(Transaction.constituency_id == constituency_id)
+        if transaction_type:
+            query = query.filter(Transaction.type == transaction_type)
+        if start_time:
+            query = query.filter(Transaction.timestamp >= start_time)
+        if end_time:
+            query = query.filter(Transaction.timestamp <= end_time)
+        if status:
+            query = query.filter(Transaction.status == status)
+        if anomaly_detected is not None:
+            query = query.filter(Transaction.anomaly_detected == anomaly_detected)
+        if source:
+            query = query.filter(Transaction.source == source)
+        if file_id:
+            query = query.filter(Transaction.file_id == file_id)
+        
+        # Get total count
+        total = query.count()
+        
+        # Apply sorting
+        if sort_by:
+            sort_column = getattr(Transaction, sort_by, Transaction.timestamp)
+            if sort_order.lower() == "asc":
+                query = query.order_by(asc(sort_column))
+            else:
+                query = query.order_by(desc(sort_column))
+        
+        # Apply pagination
+        query = query.offset((page - 1) * limit).limit(limit)
+        
+        return query.all(), total
+    
+    def create_batch(
+        self, db: Session, *, obj_in_list: List[TransactionCreate]
+    ) -> Dict[str, Any]:
+        """
+        Create multiple transactions in a batch.
+        
+        Args:
+            db: Database session
+            obj_in_list: List of transaction data to create
+            
+        Returns:
+            Dictionary with processing results
+        """
+        result = {
+            "success": True,
+            "processed": 0,
+            "failed": 0,
+            "errors": []
+        }
+        
+        for i, obj_in in enumerate(obj_in_list):
+            try:
+                self.create(db=db, obj_in=obj_in)
+                result["processed"] += 1
+            except Exception as e:
+                result["failed"] += 1
+                result["errors"].append({
+                    "index": i,
+                    "error": str(e),
+                    "data": obj_in.dict()
+                })
+                result["success"] = False
+        
+        return result
+    
+    def update_batch(
+        self, db: Session, *, id_list: List[str], obj_in: TransactionUpdate
+    ) -> Dict[str, Any]:
+        """
+        Update multiple transactions in a batch.
+        
+        Args:
+            db: Database session
+            id_list: List of transaction IDs to update
+            obj_in: Transaction data to update
+            
+        Returns:
+            Dictionary with processing results
+        """
+        result = {
+            "success": True,
+            "processed": 0,
+            "failed": 0,
+            "errors": []
+        }
+        
+        for i, id in enumerate(id_list):
+            try:
+                self.update(db=db, id=id, obj_in=obj_in)
+                result["processed"] += 1
+            except Exception as e:
+                result["failed"] += 1
+                result["errors"].append({
+                    "index": i,
+                    "id": id,
+                    "error": str(e)
+                })
+                result["success"] = False
+        
+        return result
 
 
 # Create an instance of TransactionCRUD

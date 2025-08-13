@@ -7,7 +7,8 @@ This module provides API endpoints for file upload and directory processing.
 import os
 import shutil
 import tempfile
-from typing import List
+import logging
+from typing import List, Dict
 from pathlib import Path
 from fastapi import APIRouter, UploadFile, File, Depends, HTTPException, BackgroundTasks, Form
 from sqlalchemy.orm import Session
@@ -21,6 +22,8 @@ from app.api.errors.exceptions import (
 )
 from app.models.schemas.processing_result import ProcessingResult, DirectoryProcessingResult
 
+# Set up logging
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -59,32 +62,56 @@ async def upload_file(
         # Import services here to avoid circular imports
         from app.services.file_service import FileService
         from app.services.transaction_service import TransactionService
+        from app.services.transaction_batch_processor import TransactionBatchProcessor
+        from app.services.transaction_validator import TransactionValidator
+        from app.services.region_service import RegionService
+        from app.models.schemas.transaction import TransactionCreate
         
         # Process file
         file_service = FileService()
         transaction_service = TransactionService(db)
-        
-        # Add a small delay to simulate processing time
-        time.sleep(0.5)
+        batch_processor = TransactionBatchProcessor(db)
+        validator = TransactionValidator()
+        region_service = RegionService(db)
         
         # Process file and extract transactions
         # Use the original filename for metadata extraction, but the temp file path for reading content
         result, transactions = file_service.process_file(temp_file_path, original_filename=file.filename)
         
-        # Save transactions to database
-        saved_count = transaction_service.save_transactions(transactions)
+        # Create or update region if region information is available
+        if result.region_id and result.region_name:
+            region_service.create_or_update_region(result.region_id, result.region_name)
+        
+        # Convert TransactionData objects to TransactionCreate objects
+        transaction_creates = []
+        for transaction in transactions:
+            transaction_create = TransactionCreate(
+                constituency_id=transaction.constituency_id,
+                block_height=transaction.block_height,
+                timestamp=datetime.fromisoformat(transaction.timestamp),
+                type=transaction.type,
+                raw_data=transaction.raw_data,
+                operation_data=transaction.operation_data,
+                status="processed",
+                source="file_upload",
+                file_id=file.filename
+            )
+            transaction_creates.append(transaction_create)
+        
+        # Process transactions in batch
+        batch_result = batch_processor.process_large_batch(transaction_creates)
         
         # Update constituency metrics
         transaction_service.update_constituency_metrics(result.constituency_id)
         
         # Update transactions processed count
-        result.transactions_processed = saved_count
+        result.transactions_processed = batch_result["processed"]
         
         return result
     except MetadataExtractionError as e:
         raise HTTPException(
             status_code=400,
-            detail=f"Failed to extract metadata from filename: {str(e)}"
+            detail=f"Failed to extract metadata from file: {str(e)}"
         )
     except TransactionExtractionError as e:
         raise HTTPException(
@@ -107,6 +134,7 @@ async def upload_file(
             detail=f"Failed to process file: {str(e)}"
         )
     except Exception as e:
+        logger.exception("Unexpected error during file upload")
         raise HTTPException(
             status_code=500,
             detail=f"An unexpected error occurred: {str(e)}"
@@ -136,33 +164,58 @@ async def process_directory(
         # Import services here to avoid circular imports
         from app.services.file_service import FileService
         from app.services.transaction_service import TransactionService
+        from app.services.transaction_batch_processor import TransactionBatchProcessor
+        from app.services.transaction_validator import TransactionValidator
+        from app.services.region_service import RegionService
+        from app.models.schemas.transaction import TransactionCreate
+        from datetime import datetime
         
         # Process directory
         file_service = FileService()
         transaction_service = TransactionService(db)
-        
-        # Add a small delay to simulate processing time
-        time.sleep(0.5)
+        batch_processor = TransactionBatchProcessor(db)
+        validator = TransactionValidator()
+        region_service = RegionService(db)
         
         # Process directory and extract transactions
         result, transactions = file_service.process_directory(directory_path)
-        print(f"Directory processing result: {result}")
-        print(f"Extracted {len(transactions)} transactions")
+        logger.info(f"Directory processing result: {result}")
+        logger.info(f"Extracted {len(transactions)} transactions")
         
-        # Save transactions to database
-        saved_count = transaction_service.save_transactions(transactions)
-        print(f"Saved {saved_count} transactions to database")
+        # Create or update region if region information is available
+        if result.region_id and result.region_name:
+            region_service.create_or_update_region(result.region_id, result.region_name)
+        
+        # Convert TransactionData objects to TransactionCreate objects
+        transaction_creates = []
+        for transaction in transactions:
+            transaction_create = TransactionCreate(
+                constituency_id=transaction.constituency_id,
+                block_height=transaction.block_height,
+                timestamp=datetime.fromisoformat(transaction.timestamp),
+                type=transaction.type,
+                raw_data=transaction.raw_data,
+                operation_data=transaction.operation_data,
+                status="processed",
+                source="file_upload",
+                file_id=f"dir:{directory_path}"
+            )
+            transaction_creates.append(transaction_create)
+        
+        # Process transactions in batch
+        batch_result = batch_processor.process_large_batch(transaction_creates)
+        logger.info(f"Batch processing result: {batch_result}")
         
         # Update constituency metrics
         if result.constituency_id:
-            print(f"Updating metrics for constituency: {result.constituency_id}")
+            logger.info(f"Updating metrics for constituency: {result.constituency_id}")
             transaction_service.update_constituency_metrics(result.constituency_id)
         else:
-            print("No constituency_id found, skipping metrics update")
+            logger.warning("No constituency_id found, skipping metrics update")
         
         # Update transactions processed count
-        result.transactions_processed = saved_count
-        print(f"Final result: {result}")
+        result.transactions_processed = batch_result["processed"]
+        logger.info(f"Final result: {result}")
         
         return result
     except DirectoryProcessingError as e:
@@ -181,9 +234,128 @@ async def process_directory(
             detail=f"Failed to update constituency metrics: {str(e)}"
         )
     except Exception as e:
+        logger.exception("Unexpected error during directory processing")
         raise HTTPException(
             status_code=500,
             detail=f"An unexpected error occurred: {str(e)}"
+        )
+
+
+@router.post("/watch-directory")
+async def watch_directory(
+    directory_path: str = Form(...),
+    recursive: bool = Form(True),
+    patterns: List[str] = Form(["*.csv"]),
+    db: Session = Depends(get_db)
+):
+    """
+    Start watching a directory for new files.
+    
+    Args:
+        directory_path: Path to the directory to watch
+        recursive: Whether to watch subdirectories
+        patterns: List of file patterns to watch (e.g., ["*.csv"])
+        db: Database session
+        
+    Returns:
+        Success message
+    """
+    try:
+        # Import service here to avoid circular imports
+        from app.services.file_watcher_service import FileWatcherService
+        
+        # Check if directory exists
+        if not os.path.exists(directory_path) or not os.path.isdir(directory_path):
+            raise HTTPException(
+                status_code=400,
+                detail=f"Directory not found: {directory_path}"
+            )
+        
+        # Get or create file watcher
+        watcher = FileWatcherService.get_instance(directory_path, db)
+        
+        # Start watching
+        watcher.start(recursive=recursive, patterns=patterns)
+        
+        return {
+            "message": f"Started watching directory: {directory_path}",
+            "recursive": recursive,
+            "patterns": patterns
+        }
+    except Exception as e:
+        logger.exception(f"Error starting file watcher for {directory_path}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to start watching directory: {str(e)}"
+        )
+
+
+@router.post("/stop-watching")
+async def stop_watching(
+    directory_path: str = Form(None)
+):
+    """
+    Stop watching a directory or all directories.
+    
+    Args:
+        directory_path: Path to the directory to stop watching (optional)
+        
+    Returns:
+        Success message
+    """
+    try:
+        # Import service here to avoid circular imports
+        from app.services.file_watcher_service import FileWatcherService
+        
+        if directory_path:
+            # Get file watcher
+            watcher = FileWatcherService.get_instance(directory_path, None)
+            
+            # Stop watching
+            watcher.stop()
+            
+            return {
+                "message": f"Stopped watching directory: {directory_path}"
+            }
+        else:
+            # Stop all watchers
+            FileWatcherService.stop_all()
+            
+            return {
+                "message": "Stopped watching all directories"
+            }
+    except Exception as e:
+        logger.exception(f"Error stopping file watcher for {directory_path or 'all directories'}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to stop watching directory: {str(e)}"
+        )
+
+
+@router.get("/watching-directories")
+async def get_watching_directories():
+    """
+    Get a list of directories being watched.
+    
+    Returns:
+        List of directory paths
+    """
+    try:
+        # Import service here to avoid circular imports
+        from app.services.file_watcher_service import FileWatcherService
+        
+        # Get watching directories
+        directories = FileWatcherService.get_watching_directories()
+        
+        return {
+            "directories": directories,
+            "count": len(directories)
+        }
+    except Exception as e:
+        logger.exception("Error getting watching directories")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to get watching directories: {str(e)}"
         )
 
 
@@ -205,9 +377,17 @@ async def get_transaction_statistics(
     try:
         # Import service here to avoid circular imports
         from app.services.transaction_service import TransactionService
+        from app.services.transaction_query_service import TransactionQueryService
         
         transaction_service = TransactionService(db)
-        statistics = transaction_service.get_transaction_statistics(constituency_id)
+        query_service = TransactionQueryService(db)
+        
+        # Get statistics from both services
+        basic_stats = transaction_service.get_transaction_statistics(constituency_id)
+        advanced_stats = query_service.get_transaction_statistics(constituency_id)
+        
+        # Combine statistics
+        statistics = {**basic_stats, **advanced_stats}
         
         if not statistics:
             raise HTTPException(
@@ -217,6 +397,7 @@ async def get_transaction_statistics(
         
         return statistics
     except Exception as e:
+        logger.exception(f"Error getting statistics for constituency {constituency_id}")
         raise HTTPException(
             status_code=500,
             detail=f"An unexpected error occurred: {str(e)}"

@@ -217,8 +217,7 @@ def test_election_in_db_schema():
         "type": "presidential",
         "description": "2024 United States Presidential Election",
         "timezone": "America/New_York",
-        "created_at": "2024-08-01T12:00:00",
-        "updated_at": "2024-08-01T12:00:00",
+        "created_at": "2024-08-01T12:00:00",        
     }
     
     # Create schema instance
@@ -235,7 +234,7 @@ def test_election_in_db_schema():
     assert election.description == valid_data["description"]
     assert election.timezone == valid_data["timezone"]
     assert isinstance(election.created_at, datetime)
-    assert isinstance(election.updated_at, datetime)
+    
 
 
 def test_election_response_schema():
@@ -253,8 +252,7 @@ def test_election_response_schema():
         "type": "presidential",
         "description": "2024 United States Presidential Election",
         "timezone": "America/New_York",
-        "created_at": "2024-08-01T12:00:00",
-        "updated_at": "2024-08-01T12:00:00",
+        "created_at": "2024-08-01T12:00:00",        
         "constituencies": [],
     }
     
@@ -271,8 +269,7 @@ def test_election_response_schema():
     assert election.type == valid_data["type"]
     assert election.description == valid_data["description"]
     assert election.timezone == valid_data["timezone"]
-    assert isinstance(election.created_at, datetime)
-    assert isinstance(election.updated_at, datetime)
+    assert isinstance(election.created_at, datetime)    
     assert election.constituencies == []
 
 

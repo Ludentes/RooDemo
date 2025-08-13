@@ -175,3 +175,113 @@ def test_process_directory():
         assert len(transactions) == 2
         assert transactions[0].type == "blindSigIssue"
         assert transactions[1].type == "vote"
+
+
+def test_extract_metadata_from_path():
+    """Test extracting metadata from a valid file path."""
+    # Arrange
+    service = FileService()
+    file_path = Path("/home/user/data/90 - Пермский край/Выборы депутатов Думы Красновишерского городского округа/Округ №1_3/AsrxMqfGWsXEgTmvdw95omtQ4Gv1Vi4mGAvLYy23DHpM/AsrxMqfGWsXEgTmvdw95omtQ4Gv1Vi4mGAvLYy23DHpM_2024-09-06_0800-0900/AsrxMqfGWsXEgTmvdw95omtQ4Gv1Vi4mGAvLYy23DHpM_2024-09-06_0800-0900.csv")
+    
+    # Act
+    metadata = service.extract_metadata_from_path(file_path)
+    
+    # Assert
+    assert metadata["region_id"] == "90"
+    assert metadata["region_name"] == "Пермский край"
+    assert metadata["election_name"] == "Выборы депутатов Думы Красновишерского городского округа"
+    assert metadata["constituency_name"] == "Округ №1_3"
+    assert metadata["constituency_id"] == "AsrxMqfGWsXEgTmvdw95omtQ4Gv1Vi4mGAvLYy23DHpM"
+
+
+def test_extract_metadata_from_invalid_path():
+    """Test extracting metadata from an invalid file path."""
+    # Arrange
+    service = FileService()
+    file_path = Path("/home/user/invalid/path/file.csv")
+    
+    # Act & Assert
+    with pytest.raises(MetadataExtractionError):
+        service.extract_metadata_from_path(file_path)
+
+
+def test_process_file_with_path_metadata():
+    """Test processing a file with path metadata."""
+    # Arrange
+    service = FileService()
+    
+    # Create a temporary directory structure
+    with tempfile.TemporaryDirectory() as temp_dir:
+        # Create directory structure
+        region_dir = Path(temp_dir) / "90 - Пермский край"
+        election_dir = region_dir / "Выборы депутатов Думы Красновишерского городского округа"
+        constituency_dir = election_dir / "Округ №1_3"
+        contract_dir = constituency_dir / "AsrxMqfGWsXEgTmvdw95omtQ4Gv1Vi4mGAvLYy23DHpM"
+        data_dir = contract_dir / "AsrxMqfGWsXEgTmvdw95omtQ4Gv1Vi4mGAvLYy23DHpM_2024-09-06_0800-0900"
+        
+        # Create directories
+        os.makedirs(data_dir, exist_ok=True)
+        
+        # Create a test file
+        file_path = data_dir / "AsrxMqfGWsXEgTmvdw95omtQ4Gv1Vi4mGAvLYy23DHpM_2024-09-06_0800-0900.csv"
+        with open(file_path, 'w') as f:
+            f.write("""65dbpXPGsbH3UsuYfvshDQsC9AcHTQx3emmKWbZKYQQS;AsrxMqfGWsXEgTmvdw95omtQ4Gv1Vi4mGAvLYy23DHpM;1;104;1662453028819;1662453028819;1662453028819;1662453028819;{"key": "operation", "stringValue": "blindSigIssue"};{"key": "BLINDSIG_65dbpXPGsbH3UsuYfvshDQsC9AcHTQx3emmKWbZKYQQS"};1;1
+7JKyZBUQRCvwbk8APzKHEGFmQXC9ZxFJxmJHkd6ec5Vr;AsrxMqfGWsXEgTmvdw95omtQ4Gv1Vi4mGAvLYy23DHpM;1;105;1662453128819;1662453128819;1662453128819;1662453128819;{"key": "operation", "stringValue": "vote"};{"key": "VOTE_7JKyZBUQRCvwbk8APzKHEGFmQXC9ZxFJxmJHkd6ec5Vr"};1;1""")
+        
+        # Act
+        result, transactions = service.process_file(file_path)
+        
+        # Assert
+        assert result.filename == file_path.name
+        assert result.transactions_processed == 2
+        assert result.constituency_id == "AsrxMqfGWsXEgTmvdw95omtQ4Gv1Vi4mGAvLYy23DHpM"
+        assert result.date == date(2024, 9, 6)
+        assert result.time_range == "0800-0900"
+        assert result.region_id == "90"
+        assert result.region_name == "Пермский край"
+        assert result.election_name == "Выборы депутатов Думы Красновишерского городского округа"
+        assert result.constituency_name == "Округ №1_3"
+        
+        assert len(transactions) == 2
+        assert transactions[0].type == "blindSigIssue"
+        assert transactions[1].type == "vote"
+
+
+def test_process_directory_with_path_metadata():
+    """Test processing a directory with path metadata."""
+    # Arrange
+    service = FileService()
+    
+    # Create a temporary directory structure
+    with tempfile.TemporaryDirectory() as temp_dir:
+        # Create directory structure
+        region_dir = Path(temp_dir) / "90 - Пермский край"
+        election_dir = region_dir / "Выборы депутатов Думы Красновишерского городского округа"
+        constituency_dir = election_dir / "Округ №1_3"
+        contract_dir = constituency_dir / "AsrxMqfGWsXEgTmvdw95omtQ4Gv1Vi4mGAvLYy23DHpM"
+        data_dir = contract_dir / "AsrxMqfGWsXEgTmvdw95omtQ4Gv1Vi4mGAvLYy23DHpM_2024-09-06_0800-0900"
+        
+        # Create directories
+        os.makedirs(data_dir, exist_ok=True)
+        
+        # Create a test file
+        file_path = data_dir / "AsrxMqfGWsXEgTmvdw95omtQ4Gv1Vi4mGAvLYy23DHpM_2024-09-06_0800-0900.csv"
+        with open(file_path, 'w') as f:
+            f.write("""65dbpXPGsbH3UsuYfvshDQsC9AcHTQx3emmKWbZKYQQS;AsrxMqfGWsXEgTmvdw95omtQ4Gv1Vi4mGAvLYy23DHpM;1;104;1662453028819;1662453028819;1662453028819;1662453028819;{"key": "operation", "stringValue": "blindSigIssue"};{"key": "BLINDSIG_65dbpXPGsbH3UsuYfvshDQsC9AcHTQx3emmKWbZKYQQS"};1;1
+7JKyZBUQRCvwbk8APzKHEGFmQXC9ZxFJxmJHkd6ec5Vr;AsrxMqfGWsXEgTmvdw95omtQ4Gv1Vi4mGAvLYy23DHpM;1;105;1662453128819;1662453128819;1662453128819;1662453128819;{"key": "operation", "stringValue": "vote"};{"key": "VOTE_7JKyZBUQRCvwbk8APzKHEGFmQXC9ZxFJxmJHkd6ec5Vr"};1;1""")
+        
+        # Act
+        result, transactions = service.process_directory(temp_dir)
+        
+        # Assert
+        assert result.files_processed == 1
+        assert result.transactions_processed == 2
+        assert result.constituency_id == "AsrxMqfGWsXEgTmvdw95omtQ4Gv1Vi4mGAvLYy23DHpM"
+        assert result.region_id == "90"
+        assert result.region_name == "Пермский край"
+        assert result.election_name == "Выборы депутатов Думы Красновишерского городского округа"
+        assert result.constituency_name == "Округ №1_3"
+        
+        assert len(transactions) == 2
+        assert transactions[0].type == "blindSigIssue"
+        assert transactions[1].type == "vote"

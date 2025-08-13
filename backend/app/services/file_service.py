@@ -9,6 +9,7 @@ import os
 import re
 import csv
 import json
+import logging
 from pathlib import Path
 from typing import List, Dict, Any, Optional, Tuple
 from datetime import datetime, date
@@ -19,6 +20,9 @@ from app.api.errors.exceptions import (
     FileProcessingError, MetadataExtractionError,
     TransactionExtractionError, DirectoryProcessingError
 )
+
+# Set up logging
+logger = logging.getLogger(__name__)
 
 
 class FileService:
@@ -37,7 +41,7 @@ class FileService:
             filename: The name of the file
             
         Returns:
-            Extracted metadata (constituency_id, date, time_range)
+            FileMetadata object with extracted metadata
             
         Raises:
             MetadataExtractionError: If metadata cannot be extracted
@@ -61,6 +65,7 @@ class FileService:
             # Parse date
             date_obj = datetime.strptime(date_str, '%Y-%m-%d').date()
             
+            # Create and return a FileMetadata object
             return FileMetadata(
                 constituency_id=constituency_id,
                 date=date_obj,
@@ -69,13 +74,71 @@ class FileService:
         except Exception as e:
             raise MetadataExtractionError(f"Failed to extract metadata from filename: {e}")
     
+    def extract_metadata_from_path(self, file_path: Path) -> Dict[str, str]:
+        """
+        Extract metadata from a file path.
+        
+        Args:
+            file_path: Path to the file
+            
+        Returns:
+            Dictionary with extracted metadata (region_id, region_name, election_name, constituency_name, constituency_id)
+            
+        Raises:
+            MetadataExtractionError: If metadata cannot be extracted
+        """
+        try:
+            # Convert to absolute path to ensure we have the full path
+            abs_path = file_path.absolute()
+            
+            # Get parts of the path
+            parts = abs_path.parts
+            
+            # Look for a directory with the pattern "XX - Region Name" in the path
+            region_index = -1
+            for i, part in enumerate(parts):
+                if re.match(r"\d+\s*-\s*.*", part):
+                    region_index = i
+                    break
+            
+            if region_index == -1 or region_index + 3 >= len(parts):
+                raise ValueError(f"Could not find region directory in path: {file_path}")
+            
+            # Extract region information
+            region_part = parts[region_index]
+            region_match = re.match(r"(\d+)\s*-\s*(.*)", region_part)
+            if not region_match:
+                raise ValueError(f"Invalid region format: {region_part}")
+            
+            region_id = region_match.group(1)
+            region_name = region_match.group(2)
+            
+            # Extract election name
+            election_name = parts[region_index + 1]
+            
+            # Extract constituency name
+            constituency_name = parts[region_index + 2]
+            
+            # Extract constituency ID (smart contract ID)
+            constituency_id = parts[region_index + 3]
+            
+            return {
+                "region_id": region_id,
+                "region_name": region_name,
+                "election_name": election_name,
+                "constituency_name": constituency_name,
+                "constituency_id": constituency_id
+            }
+        except Exception as e:
+            raise MetadataExtractionError(f"Failed to extract metadata from path: {e}")
+    
     def extract_transactions_from_csv(self, file_content: str, metadata: FileMetadata) -> List[TransactionData]:
         """
         Extract transactions from CSV content.
         
         Args:
             file_content: Content of the CSV file
-            metadata: Metadata extracted from filename
+            metadata: Metadata extracted from filename and path
             
         Returns:
             List of extracted transactions
@@ -203,16 +266,16 @@ class FileService:
         except Exception as e:
             raise ValueError(f"Failed to parse JSON-like structure: {e}")
     
-    def process_file(self, file_path: Path, original_filename: str = None) -> ProcessingResult:
+    def process_file(self, file_path: Path, original_filename: str = None) -> Tuple[ProcessingResult, List[TransactionData]]:
         """
-        Process a CSV file and extract transactions.
+        Process a CSV file and extract transactions with enhanced metadata.
         
         Args:
             file_path: Path to the file
             original_filename: Original filename to use for metadata extraction (optional)
             
         Returns:
-            ProcessingResult with statistics
+            ProcessingResult with statistics and list of transactions
             
         Raises:
             FileProcessingError: If processing fails
@@ -220,7 +283,36 @@ class FileService:
         try:
             # Extract metadata from filename
             filename_for_metadata = original_filename if original_filename else file_path.name
-            metadata = self.extract_metadata_from_filename(filename_for_metadata)
+            filename_metadata = self.extract_metadata_from_filename(filename_for_metadata)
+            
+            # Extract metadata from path
+            try:
+                path_metadata = self.extract_metadata_from_path(file_path)
+                
+                # Verify that constituency_id from filename matches constituency_id from path
+                if filename_metadata.constituency_id != path_metadata["constituency_id"]:
+                    logger.warning(
+                        f"Constituency ID mismatch: {filename_metadata.constituency_id} (filename) "
+                        f"vs {path_metadata['constituency_id']} (path)"
+                    )
+            except MetadataExtractionError as e:
+                logger.warning(f"Failed to extract metadata from path: {e}")
+                path_metadata = {
+                    "region_id": None,
+                    "region_name": None,
+                    "election_name": None,
+                    "constituency_name": None,
+                    "constituency_id": filename_metadata.constituency_id
+                }
+            
+            # Update FileMetadata object with path metadata
+            filename_metadata.region_id = path_metadata["region_id"]
+            filename_metadata.region_name = path_metadata["region_name"]
+            filename_metadata.election_name = path_metadata["election_name"]
+            filename_metadata.constituency_name = path_metadata["constituency_name"]
+            
+            # Use the updated metadata
+            metadata = filename_metadata
             
             # Read file content
             with open(file_path, 'r', encoding='utf-8') as f:
@@ -235,7 +327,11 @@ class FileService:
                 transactions_processed=len(transactions),
                 constituency_id=metadata.constituency_id,
                 date=metadata.date,
-                time_range=metadata.time_range
+                time_range=metadata.time_range,
+                region_id=metadata.region_id,
+                region_name=metadata.region_name,
+                election_name=metadata.election_name,
+                constituency_name=metadata.constituency_name
             )
             
             return result, transactions
@@ -244,7 +340,7 @@ class FileService:
     
     def process_directory(self, directory_path: str) -> Tuple[DirectoryProcessingResult, List[TransactionData]]:
         """
-        Process all CSV files in a directory.
+        Process all CSV files in a directory with enhanced metadata extraction.
         
         Args:
             directory_path: Path to the directory
@@ -257,121 +353,57 @@ class FileService:
         """
         try:
             directory = Path(directory_path)
-            print(f"Processing directory: {directory}")
+            logger.info(f"Processing directory: {directory}")
             if not directory.exists() or not directory.is_dir():
                 raise DirectoryProcessingError(f"Directory not found: {directory_path}")
             
             # Find all CSV files in the directory
             csv_files = list(directory.glob('**/*.csv'))
-            print(f"Found {len(csv_files)} CSV files: {csv_files}")
+            logger.info(f"Found {len(csv_files)} CSV files")
             if not csv_files:
                 raise DirectoryProcessingError(f"No CSV files found in directory: {directory_path}")
             
             # Process each file
             total_transactions_processed = 0
             all_transactions = []
+            
+            # Variables to store common metadata
+            region_id = None
+            region_name = None
+            election_name = None
+            constituency_name = None
             constituency_id = None
             
             for file_path in csv_files:
                 try:
-                    print(f"Processing file: {file_path}")
+                    logger.info(f"Processing file: {file_path}")
                     result, transactions = self.process_file(file_path)
-                    print(f"Processed {result.transactions_processed} transactions from {file_path}")
+                    logger.info(f"Processed {result.transactions_processed} transactions from {file_path}")
                     total_transactions_processed += result.transactions_processed
                     all_transactions.extend(transactions)
                     
-                    # Set constituency_id from the first file
+                    # Set metadata from the first successful file
                     if constituency_id is None:
                         constituency_id = result.constituency_id
+                        region_id = result.region_id
+                        region_name = result.region_name
+                        election_name = result.election_name
+                        constituency_name = result.constituency_name
                 except Exception as e:
                     # Log error but continue processing other files
-                    print(f"Error processing file {file_path}: {e}")
-                    import traceback
-                    traceback.print_exc()
+                    logger.error(f"Error processing file {file_path}: {e}")
             
             # Create directory processing result
             result = DirectoryProcessingResult(
                 files_processed=len(csv_files),
                 transactions_processed=total_transactions_processed,
-                constituency_id=constituency_id or ""  # Fallback if no files were processed successfully
+                constituency_id=constituency_id or "",  # Fallback if no files were processed successfully
+                region_id=region_id,
+                region_name=region_name,
+                election_name=election_name,
+                constituency_name=constituency_name
             )
             
             return result, all_transactions
         except Exception as e:
             raise DirectoryProcessingError(f"Failed to process directory {directory_path}: {e}")
-
-
-# Simple minitest to check if the basic functionality works
-if __name__ == "__main__":
-    import tempfile
-    import os
-    import sys
-    from datetime import date
-    from pathlib import Path
-    
-    # Fix import paths when running directly
-    current_dir = os.path.dirname(os.path.abspath(__file__))
-    backend_dir = os.path.abspath(os.path.join(current_dir, '../../'))
-    sys.path.insert(0, backend_dir)
-    
-    # Now import the modules
-    from app.models.schemas.file_metadata import FileMetadata
-    from app.models.schemas.processing_result import TransactionData
-    
-    # Create a FileService instance
-    service = FileService()
-    
-    print("Testing FileService...")
-    
-    try:
-        # Test extracting metadata from a filename
-        print("\nTesting metadata extraction:")
-        filename = "AsrxMqfGWsXEgTmvdw95omtQ4Gv1Vi4mGAvLYy23DHpM_2024-09-06_0800-0900.csv"
-        metadata = service.extract_metadata_from_filename(filename)
-        print(f"Metadata extraction successful:")
-        print(f"  constituency_id: {metadata.constituency_id}")
-        print(f"  date: {metadata.date}")
-        print(f"  time_range: {metadata.time_range}")
-        
-        # Test parsing JSON-like structure
-        print("\nTesting JSON parsing:")
-        data_str = '{"key": "operation", "stringValue": "blindSigIssue"},{"key": "BLINDSIG_65dbpXPGsbH3UsuYfvshDQsC9AcHTQx3emmKWbZKYQQS"}'
-        result = service._parse_json_like_structure(data_str)
-        print(f"JSON parsing successful: {result}")
-        
-        # Test extracting transactions from CSV
-        print("\nTesting transaction extraction:")
-        csv_content = """65dbpXPGsbH3UsuYfvshDQsC9AcHTQx3emmKWbZKYQQS;AsrxMqfGWsXEgTmvdw95omtQ4Gv1Vi4mGAvLYy23DHpM;1;104;1662453028819;1662453028819;1662453028819;1662453028819;{"key": "operation", "stringValue": "blindSigIssue"};{"key": "BLINDSIG_65dbpXPGsbH3UsuYfvshDQsC9AcHTQx3emmKWbZKYQQS"};1;1
-7JKyZBUQRCvwbk8APzKHEGFmQXC9ZxFJxmJHkd6ec5Vr;AsrxMqfGWsXEgTmvdw95omtQ4Gv1Vi4mGAvLYy23DHpM;1;105;1662453128819;1662453128819;1662453128819;1662453128819;{"key": "operation", "stringValue": "vote"};{"key": "VOTE_7JKyZBUQRCvwbk8APzKHEGFmQXC9ZxFJxmJHkd6ec5Vr"};1;1"""
-        transactions = service.extract_transactions_from_csv(csv_content, metadata)
-        print(f"Transaction extraction successful:")
-        print(f"  Number of transactions: {len(transactions)}")
-        print(f"  First transaction ID: {transactions[0].transaction_id}")
-        print(f"  First transaction type: {transactions[0].type}")
-        
-        # Test processing a file
-        print("\nTesting file processing:")
-        with tempfile.NamedTemporaryFile(suffix=".csv", delete=False) as temp_file:
-            temp_file.write(csv_content.encode('utf-8'))
-            temp_path = temp_file.name
-        
-        # Create a new file with the correct name
-        new_path = os.path.join(os.path.dirname(temp_path), filename)
-        os.rename(temp_path, new_path)
-        
-        try:
-            result, transactions = service.process_file(Path(new_path))
-            print(f"File processing successful:")
-            print(f"  Filename: {result.filename}")
-            print(f"  Transactions processed: {result.transactions_processed}")
-            print(f"  Constituency ID: {result.constituency_id}")
-        finally:
-            # Clean up
-            if os.path.exists(new_path):
-                os.unlink(new_path)
-        
-        print("\nAll tests passed!")
-    except Exception as e:
-        print(f"Test failed: {e}")
-        import traceback
-        traceback.print_exc()

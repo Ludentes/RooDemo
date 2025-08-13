@@ -56,6 +56,14 @@ The Election Monitoring System uses SQLAlchemy ORM with SQLite for the MVP (upgr
 │ resolved_at │       │ started_at          │
 │ assigned_to │       │ completed_at        │
 └─────────────┘       └─────────────────────┘
+
+┌─────────────┐
+│   Region    │
+├─────────────┤
+│ id          │
+│ name        │
+│ country     │
+└─────────────┘
 ```
 
 ## Database Models
@@ -172,6 +180,16 @@ Represents hourly aggregated statistics for a constituency.
 **Relationships**:
 - `constituency`: Many-to-one relationship with Constituency model
 
+### Region
+
+Represents a geographic region where elections are held.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| id | String | Primary key, region ID (e.g., "90") |
+| name | String | Name of the region (e.g., "Пермский край") |
+| country | String | Country name (default: "Russia") |
+
 ### FileProcessingJob
 
 Tracks the status of CSV file processing jobs.
@@ -232,17 +250,29 @@ def create_tables():
    - CSV Parser extracts transaction data
    - Transactions are stored in the Transaction table
 
-2. **Metrics Calculation**:
+2. **Folder Structure Processing**:
+   - Metadata is extracted from folder structure (region, election, constituency)
+   - Region information is stored in the Region table
+   - File metadata is enhanced with region, election, and constituency information
+
+3. **File Watching**:
+   - FileWatcherService monitors directories for new files
+   - When a new file is detected, it is automatically processed
+   - Metadata is extracted from both the filename and folder structure
+   - Transactions are stored in the database
+   - Constituency metrics are updated
+
+4. **Metrics Calculation**:
    - Background job processes new transactions
    - Updates Constituency metrics (bulletins_issued, votes_cast, participation_rate)
    - Generates HourlyStats records
 
-3. **Anomaly Detection**:
+5. **Anomaly Detection**:
    - Background job analyzes metrics and transactions
    - Calculates anomaly scores
    - Creates Alert records for detected anomalies
 
-4. **API Data Access**:
+6. **API Data Access**:
    - API endpoints query the database
    - Data is transformed into response models
    - WebSocket pushes real-time updates
@@ -346,6 +376,7 @@ backend/
       alert.py          # Alert model
       hourly_stats.py   # HourlyStats model
       file_processing.py # FileProcessingJob model
+      region.py         # Region model
 ```
 
 ### Pydantic Schemas
@@ -363,6 +394,9 @@ backend/
         alert.py          # Alert schemas
         hourly_stats.py   # HourlyStats schemas
         file_processing.py # FileProcessingJob schemas
+        region.py         # Region schemas
+        file_metadata.py  # FileMetadata schema
+        processing_result.py # ProcessingResult schema
 ```
 
 ### Database Access Functions (CRUD)
@@ -379,6 +413,7 @@ backend/
       alert.py          # Alert CRUD
       hourly_stats.py   # HourlyStats CRUD
       file_processing.py # FileProcessingJob CRUD
+      region.py         # Region CRUD
 ```
 
 ### Service Layer
@@ -393,6 +428,10 @@ backend/
       election.py       # Election service
       constituency.py   # Constituency service
       dashboard.py      # Dashboard service
+      file_service.py   # File processing service
+      transaction_service.py # Transaction service
+      region_service.py # Region service
+      file_watcher_service.py # File watcher service
 ```
 
 ### API Routes
@@ -409,6 +448,7 @@ backend/
         elections.py    # Election routes
         constituencies.py # Constituency routes
         dashboard.py    # Dashboard routes
+        files.py        # File processing routes
 ```
 
 ### Error Handling

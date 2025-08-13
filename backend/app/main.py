@@ -3,13 +3,35 @@ from fastapi.middleware.cors import CORSMiddleware
 import os
 import logging
 from fastapi.openapi.utils import get_openapi
-from app.api import api_router
+from app.api import api_router, setup_routes
 from app.api.errors.handlers import register_exception_handlers
 from app.models.database import create_tables
+from contextlib import asynccontextmanager
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Create database tables on startup."""    
+    current_dir = os.getcwd()
+    db_path = os.path.join(current_dir, "election_monitoring.db")
+    logger.info(f"Current working directory: {current_dir}")
+    logger.info(f"Database path: {db_path}")
+    logger.info(f"Database exists before table creation: {os.path.exists(db_path)}")
+
+    # Create tables
+    try:
+        create_tables()
+        logger.info("Database tables created successfully")
+        logger.info(f"Database exists after table creation: {os.path.exists(db_path)}")
+    except Exception as e:
+        logger.error(f"Error creating database tables: {str(e)}")
+        import traceback
+        logger.error(traceback.format_exc())
+    yield
 
 app = FastAPI(
     title="Election Monitoring API",
@@ -17,6 +39,7 @@ app = FastAPI(
     version="1.0.0",
     docs_url="/docs",
     redoc_url="/redoc",
+    lifespan=lifespan
 )
 
 def custom_openapi():
@@ -41,6 +64,7 @@ def custom_openapi():
         * **Elections**: Retrieve election information and upcoming elections
         * **Dashboard**: Get summary statistics for monitoring
         * **Files**: Process transaction files and update metrics
+        * **Transactions**: Manage blockchain transactions with filtering, batch processing, and statistics
         
         ## Authentication
         
@@ -78,6 +102,10 @@ def custom_openapi():
             "name": "files",
             "description": "File processing operations for transaction data",
         },
+        {
+            "name": "transactions",
+            "description": "Operations related to blockchain transactions",
+        },
     ]
     
     app.openapi_schema = openapi_schema
@@ -94,6 +122,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Setup API routes
+setup_routes()
+
 # Register API routes
 app.include_router(api_router)
 
@@ -101,25 +132,29 @@ app.include_router(api_router)
 register_exception_handlers(app)
 
 # Create database tables on startup
-@app.on_event("startup")
-def startup_event():
-    """Create database tables on startup."""
-    # Log current directory and database file
-    current_dir = os.getcwd()
-    db_path = os.path.join(current_dir, "election_monitoring.db")
-    logger.info(f"Current working directory: {current_dir}")
-    logger.info(f"Database path: {db_path}")
-    logger.info(f"Database exists before table creation: {os.path.exists(db_path)}")
+# @app.on_event("startup")
+# def startup_event():
+#     """Create database tables on startup."""
+#     # Log current directory and database file
+#     current_dir = os.getcwd()
+#     db_path = os.path.join(current_dir, "election_monitoring.db")
+#     logger.info(f"Current working directory: {current_dir}")
+#     logger.info(f"Database path: {db_path}")
+#     logger.info(f"Database exists before table creation: {os.path.exists(db_path)}")
     
-    # Create tables
-    try:
-        create_tables()
-        logger.info("Database tables created successfully")
-        logger.info(f"Database exists after table creation: {os.path.exists(db_path)}")
-    except Exception as e:
-        logger.error(f"Error creating database tables: {str(e)}")
-        import traceback
-        logger.error(traceback.format_exc())
+#     # Create tables
+#     try:
+#         create_tables()
+#         logger.info("Database tables created successfully")
+#         logger.info(f"Database exists after table creation: {os.path.exists(db_path)}")
+#     except Exception as e:
+#         logger.error(f"Error creating database tables: {str(e)}")
+#         import traceback
+#         logger.error(traceback.format_exc())
+
+
+    # Clean up the ML models and release the resources
+    
 
 @app.get("/")
 async def root():

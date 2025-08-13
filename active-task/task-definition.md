@@ -1,127 +1,123 @@
-# Frontend Infrastructure Task Definition
+# Transaction Processing System Implementation
 
-## Overview
+## Task Overview
 
-This task involves setting up the foundational frontend infrastructure for the Election Monitoring System. We'll establish a modern, maintainable, and scalable frontend architecture using React, TypeScript, Vite, Tailwind CSS 4, and shadcn/ui components. This infrastructure will serve as the foundation for all subsequent frontend development tasks.
+Implement a comprehensive transaction processing system for the Election Monitoring System that builds upon the existing file processing capabilities. This system will handle the parsing, validation, storage, and retrieval of blockchain transaction data, enabling real-time monitoring and analysis of election activities.
+
+## Background
+
+The Election Monitoring System processes CSV files containing blockchain transaction data. While basic file processing and transaction storage functionality exists, we need to enhance the system with dedicated transaction processing capabilities, including API endpoints, validation rules, batch processing, and comprehensive testing.
 
 ## Objectives
 
-1. Create a new frontend project structure with proper organization and configuration
-2. Set up the core state management system using Zustand
-3. Implement a flexible API client service for backend communication
-4. Create common UI components using shadcn/ui and Tailwind CSS 4
-5. Establish routing with React Router
-6. Implement error handling and notification systems
-7. Create a responsive layout framework
+1. Implement dedicated transaction API endpoints for CRUD operations
+2. Enhance transaction validation rules
+3. Implement transaction batch processing
+4. Create a comprehensive transaction query service
+5. Develop transaction processing tests
+
+## Current State
+
+The system currently has:
+- A Transaction model with fields for constituency_id, block_height, timestamp, type, raw_data, and operation_data
+- Basic CRUD operations for transactions
+- A TransactionService with methods for saving transactions and updating constituency metrics
+- Pydantic schemas for transaction creation, update, and response
+- File processing endpoints that extract and save transactions
 
 ## Requirements
 
-### Functional Requirements
+### 1. Transaction API Endpoints
 
-1. **Project Structure**
-   - Organized directory structure following best practices
-   - Clear separation of concerns (components, hooks, services, etc.)
-   - Proper TypeScript configuration
+Implement the following RESTful API endpoints:
 
-2. **State Management**
-   - Global state management with Zustand
-   - Type-safe store definitions
-   - Modular store structure (separate stores for different domains)
-   - Persistence for relevant state
+- `GET /api/transactions` - List transactions with filtering and pagination
+- `GET /api/transactions/{id}` - Get a specific transaction by ID
+- `POST /api/transactions` - Create a new transaction
+- `PUT /api/transactions/{id}` - Update an existing transaction
+- `DELETE /api/transactions/{id}` - Delete a transaction
+- `GET /api/transactions/by-constituency/{constituency_id}` - Get transactions for a specific constituency
+- `GET /api/transactions/by-type/{type}` - Get transactions of a specific type
+- `GET /api/transactions/recent` - Get recent transactions
 
-3. **API Client**
-   - Type-safe API client for backend communication
-   - Request/response interceptors
-   - Error handling
-   - Authentication token management
-   - Automatic retry mechanism for failed requests
+### 2. Transaction Validation Rules
 
-4. **UI Components**
-   - Implementation of shadcn/ui components
-   - Custom theme configuration
-   - Responsive design with Tailwind CSS 4
-   - Accessibility compliance
+Enhance transaction validation with the following rules:
 
-5. **Routing**
-   - Route configuration with React Router
-   - Lazy loading for route components
-   - Not-found handling
+- Validate transaction types (blindSigIssue, vote)
+- Validate timestamp format and range
+- Validate constituency existence
+- Validate block height (positive integer)
+- Validate raw_data structure
+- Implement duplicate detection
 
-6. **Error Handling & Notifications**
-   - Global error boundary
-   - Toast notifications system
-   - Error logging service
+### 3. Transaction Batch Processing
 
-7. **Layout Framework**
-   - Responsive layout components
-   - Sidebar navigation
-   - Header with application information
-   - Main content area
+Implement batch processing capabilities:
 
-### Non-Functional Requirements
+- Process transactions in configurable batch sizes
+- Implement transaction queue for asynchronous processing
+- Add retry mechanism for failed transactions
+- Implement transaction processing status tracking
+- Create batch processing statistics
 
-1. **Performance**
-   - Fast initial load time (<2s)
-   - Code splitting for optimized bundle size
-   - Efficient re-rendering
+### 4. Transaction Query Service
 
-2. **Maintainability**
-   - Consistent code style with ESLint and Prettier
-   - Comprehensive documentation
-   - Type safety with TypeScript
+Enhance the transaction query service with:
 
-3. **Scalability**
-   - Modular architecture for easy extension
-   - Reusable component patterns
-   - Clear separation of concerns
+- Advanced filtering (by time range, type, constituency, etc.)
+- Sorting options
+- Pagination
+- Aggregation functions (count, average, etc.)
+- Time-based analysis (hourly, daily, etc.)
 
-4. **Accessibility**
-   - WCAG 2.1 AA compliance
-   - Keyboard navigation support
-   - Screen reader compatibility
+### 5. Transaction Processing Tests
 
-## Scope
+Develop comprehensive tests:
 
-### In Scope
+- Unit tests for transaction validation
+- Integration tests for transaction API endpoints
+- Performance tests for batch processing
+- End-to-end tests for transaction processing workflow
 
-- Project setup and configuration
-- Core infrastructure components
-- Basic layout and navigation
-- State management setup
-- API client implementation
-- Error handling and notifications
+## Acceptance Criteria
 
-### Out of Scope
-
-- Specific feature implementations (dashboard, constituency details, etc.)
-- Backend API implementation
-- Comprehensive test coverage (basic tests only)
-- Production deployment configuration
-- Analytics integration
+1. All specified API endpoints are implemented and return correct responses
+2. Transaction validation rules are enforced correctly
+3. Batch processing handles large volumes of transactions efficiently
+4. Query service provides accurate and performant data retrieval
+5. All tests pass with at least 90% code coverage
+6. Documentation is updated with new endpoints and functionality
 
 ## Dependencies
 
-- Completion of Core Data Models (Task 1) ✅
-- Completion of API Implementation (Task 2) ✅
-- Completion of File Processing System (Task 3) ✅
+- Core Data Models (completed)
+- Basic API Implementation (completed)
+- File Processing System (completed)
 
 ## Deliverables
 
-1. Frontend project structure with all configurations
-2. State management implementation
-3. API client service
-4. Common UI components library
-5. Routing implementation
-6. Error handling and notification system
-7. Responsive layout framework
-8. Documentation for the frontend architecture
+1. Transaction API endpoints implementation
+2. Enhanced transaction validation
+3. Batch processing implementation
+4. Transaction query service
+5. Comprehensive tests
+6. Updated API documentation
 
-## Success Criteria
+## Technical Constraints
 
-1. All required configurations and setups are complete
-2. The application can be started in development mode without errors
-3. Basic navigation between placeholder pages works correctly
-4. API client can make requests to the backend
-5. State management is properly implemented
-6. UI components render correctly and are responsive
-7. Error handling captures and displays errors appropriately
+- Use FastAPI for API endpoints
+- Use SQLAlchemy for database operations
+- Follow the existing project structure and coding standards
+- Ensure backward compatibility with existing file processing functionality
+
+## Estimated Effort
+
+- 4-6 hours
+
+## Next Steps After Completion
+
+After completing this task, the system will be ready for:
+1. Metrics Calculation implementation
+2. Anomaly Detection implementation
+3. Frontend Dashboard Components development

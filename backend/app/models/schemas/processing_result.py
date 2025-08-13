@@ -19,6 +19,10 @@ class ProcessingResult:
         constituency_id (str): ID of the constituency (smart contract address)
         date (date): Date of the data
         time_range (str): Time range of the data (e.g., "0800-0900")
+        region_id (str, optional): ID of the region (e.g., "90")
+        region_name (str, optional): Name of the region (e.g., "Пермский край")
+        election_name (str, optional): Name of the election (e.g., "Выборы депутатов Думы Красновишерского городского округа")
+        constituency_name (str, optional): Name of the constituency (e.g., "Округ №1_3")
     """
     
     def __init__(
@@ -27,7 +31,11 @@ class ProcessingResult:
         transactions_processed: int,
         constituency_id: str,
         date: date,
-        time_range: str
+        time_range: str,
+        region_id: str = None,
+        region_name: str = None,
+        election_name: str = None,
+        constituency_name: str = None
     ):
         """Initialize a ProcessingResult instance."""
         self.filename = filename
@@ -35,16 +43,32 @@ class ProcessingResult:
         self.constituency_id = constituency_id
         self.date = date
         self.time_range = time_range
+        self.region_id = region_id
+        self.region_name = region_name
+        self.election_name = election_name
+        self.constituency_name = constituency_name
     
     def __repr__(self):
         """Return a string representation of the ProcessingResult instance."""
-        return (
+        base_repr = (
             f"ProcessingResult(filename={self.filename}, "
             f"transactions_processed={self.transactions_processed}, "
             f"constituency_id={self.constituency_id}, "
             f"date={self.date}, "
-            f"time_range={self.time_range})"
+            f"time_range={self.time_range}"
         )
+        
+        # Add optional fields if they exist
+        if self.region_id:
+            base_repr += f", region_id={self.region_id}"
+        if self.region_name:
+            base_repr += f", region_name={self.region_name}"
+        if self.election_name:
+            base_repr += f", election_name={self.election_name}"
+        if self.constituency_name:
+            base_repr += f", constituency_name={self.constituency_name}"
+        
+        return base_repr + ")"
 
 
 class DirectoryProcessingResult:
@@ -57,26 +81,50 @@ class DirectoryProcessingResult:
         files_processed (int): Number of files processed
         transactions_processed (int): Total number of transactions processed
         constituency_id (str): ID of the constituency (smart contract address)
+        region_id (str, optional): ID of the region (e.g., "90")
+        region_name (str, optional): Name of the region (e.g., "Пермский край")
+        election_name (str, optional): Name of the election (e.g., "Выборы депутатов Думы Красновишерского городского округа")
+        constituency_name (str, optional): Name of the constituency (e.g., "Округ №1_3")
     """
     
     def __init__(
         self,
         files_processed: int,
         transactions_processed: int,
-        constituency_id: str
+        constituency_id: str,
+        region_id: str = None,
+        region_name: str = None,
+        election_name: str = None,
+        constituency_name: str = None
     ):
         """Initialize a DirectoryProcessingResult instance."""
         self.files_processed = files_processed
         self.transactions_processed = transactions_processed
         self.constituency_id = constituency_id
+        self.region_id = region_id
+        self.region_name = region_name
+        self.election_name = election_name
+        self.constituency_name = constituency_name
     
     def __repr__(self):
         """Return a string representation of the DirectoryProcessingResult instance."""
-        return (
+        base_repr = (
             f"DirectoryProcessingResult(files_processed={self.files_processed}, "
             f"transactions_processed={self.transactions_processed}, "
-            f"constituency_id={self.constituency_id})"
+            f"constituency_id={self.constituency_id}"
         )
+        
+        # Add optional fields if they exist
+        if self.region_id:
+            base_repr += f", region_id={self.region_id}"
+        if self.region_name:
+            base_repr += f", region_name={self.region_name}"
+        if self.election_name:
+            base_repr += f", election_name={self.election_name}"
+        if self.constituency_name:
+            base_repr += f", constituency_name={self.constituency_name}"
+        
+        return base_repr + ")"
 
 
 class TransactionData:

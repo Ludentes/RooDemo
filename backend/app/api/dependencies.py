@@ -7,6 +7,12 @@ from app.services.health import HealthService
 from app.services.constituency import ConstituencyService
 from app.services.election import ElectionService
 from app.services.dashboard import DashboardService
+from app.services import (
+    get_transaction_service,
+    get_transaction_validator,
+    get_transaction_batch_processor,
+    get_transaction_query_service
+)
 
 async def get_health_service() -> HealthService:
     """Dependency for health service"""
@@ -23,3 +29,23 @@ async def get_election_service(db: AsyncSession = Depends(get_db)) -> ElectionSe
 async def get_dashboard_service(db: AsyncSession = Depends(get_db)) -> DashboardService:
     """Dependency for dashboard service"""
     return DashboardService(db)
+
+async def get_transaction_service_instance(db: AsyncSession = Depends(get_db)):
+    """Dependency for transaction service"""
+    TransactionService = get_transaction_service()
+    return TransactionService(db)
+
+async def get_transaction_validator_instance():
+    """Dependency for transaction validator"""
+    TransactionValidator = get_transaction_validator()
+    return TransactionValidator()
+
+async def get_transaction_batch_processor_instance(db: AsyncSession = Depends(get_db)):
+    """Dependency for transaction batch processor"""
+    TransactionBatchProcessor = get_transaction_batch_processor()
+    return TransactionBatchProcessor(db)
+
+async def get_transaction_query_service_instance(db: AsyncSession = Depends(get_db)):
+    """Dependency for transaction query service"""
+    TransactionQueryService = get_transaction_query_service()
+    return TransactionQueryService(db)
